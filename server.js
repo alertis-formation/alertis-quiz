@@ -83,6 +83,23 @@ function saveQuizzes(data) {
   fs.writeFileSync(QUIZ_FILE, JSON.stringify(data, null, 2));
 }
 
+// Normalise un objet question pour gérer l'ancien et le nouveau format
+function normalizeQuestion(q) {
+  const nq = { ...q };
+  // Normaliser le type
+  if (!nq.type) nq.type = 'qcm';
+  // Normaliser choices : ancien format = tableau de strings
+  if (nq.choices && nq.choices.length > 0 && typeof nq.choices[0] === 'string') {
+    nq.choices = nq.choices.map(c => ({ text: c, image: '' }));
+  }
+  // Normaliser correctIndexes : ancien format = correctIndex (nombre)
+  if (!nq.correctIndexes) {
+    nq.correctIndexes = (nq.correctIndex !== undefined && nq.correctIndex !== null)
+      ? [nq.correctIndex] : [0];
+  }
+  return nq;
+}
+
 // ============================================================
 // Parties actives en mémoire : code -> état de la partie
 // ============================================================
@@ -232,16 +249,24 @@ io.on('connection', socket => {
   });
 
   // ── JOUEUR : soumettre une réponse ─────────────────────────
-  socket.on('player:answer', ({ index }) => {
+  socket.on('player:answer', ({ index, indexes }) => {
     const code = socket.data?.code;
     const g = games[code];
     if (!g || g.state !== 'question') return;
     if (g.answers[socket.id] !== undefined) return;
 
-    const q = g.quiz.questions[g.currentQ];
+    const q = normalizeQuestion(g.quiz.questions[g.currentQ]);
     const ms = Date.now() - g.qStartTime;
     const timeLimit = (q.timeLimit || 20) * 1000;
-    const correct = index === q.correctIndex;
+
+    // Supporte l'ancien format { index } et le nouveau { indexes }
+    const selected = indexes !== undefined ? indexes : (index !== undefined ? [index] : []);
+    const correctSet = q.correctIndexes;
+
+    // Correct si toutes les bonnes réponses sont sélectionnées ET aucune mauvaise
+    const correct = selected.length > 0
+      && correctSet.every(ci => selected.includes(ci))
+      && selected.every(si => correctSet.includes(si));
 
     let points = 0;
     if (correct) {
@@ -249,7 +274,7 @@ io.on('connection', socket => {
       points = Math.round(500 + 500 * speed);
     }
 
-    g.answers[socket.id] = { index, correct, points, ms };
+    g.answers[socket.id] = { indexes: selected, correct, points, ms };
     if (correct && g.players[socket.id]) g.players[socket.id].score += points;
 
     socket.emit('answer:ok', { correct, points });
@@ -291,7 +316,7 @@ function sendQuestion(g, idx) {
   g.answers = {};
   g.qStartTime = Date.now();
 
-  const q = g.quiz.questions[idx];
+  const q = normalizeQuestion(g.quiz.questions[idx]);
   const timeLimit = q.timeLimit || 20;
 
   io.to(`g:${g.code}`).emit('question:start', {
@@ -299,6 +324,7 @@ function sendQuestion(g, idx) {
     total: g.quiz.questions.length,
     text: q.text,
     choices: q.choices,
+    type: q.type || 'qcm',
     timeLimit,
     image: q.image || null,
   });
@@ -314,14 +340,17 @@ function showResults(g) {
   if (g.qTimer) { clearTimeout(g.qTimer); g.qTimer = null; }
   g.state = 'results';
 
-  const q = g.quiz.questions[g.currentQ];
+  const q = normalizeQuestion(g.quiz.questions[g.currentQ]);
   const counts = new Array(q.choices.length).fill(0);
   for (const a of Object.values(g.answers)) {
-    if (a.index >= 0 && a.index < counts.length) counts[a.index]++;
+    const sel = a.indexes || (a.index !== undefined ? [a.index] : []);
+    for (const idx of sel) {
+      if (idx >= 0 && idx < counts.length) counts[idx]++;
+    }
   }
 
   io.to(`g:${g.code}`).emit('question:results', {
-    correctIndex: q.correctIndex,
+    correctIndexes: q.correctIndexes,
     explanation: q.explanation || null,
     counts,
     leaderboard: buildLeaderboard(g),
