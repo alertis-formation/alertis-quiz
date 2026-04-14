@@ -210,6 +210,10 @@
 
 <!-- WAITING -->
 <div class="screen" id="screen-waiting">
+  <div style="position:absolute;top:16px;right:16px;display:flex;gap:8px;">
+    <button id="btn-music" onclick="toggleMusic()" title="Musique" style="background:rgba(124,58,237,.2);border:1px solid var(--purple);border-radius:8px;color:var(--text);padding:6px 10px;cursor:pointer;font-size:1rem;">🎵</button>
+    <button id="btn-sfx" onclick="toggleSfx()" title="Sons" style="background:rgba(124,58,237,.2);border:1px solid var(--purple);border-radius:8px;color:var(--text);padding:6px 10px;cursor:pointer;font-size:1rem;">🔊</button>
+  </div>
   <div class="pulse-ring">⏳</div>
   <div class="player-name-badge" id="wait-name">Joueur</div>
   <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px;" id="wait-quiz-title">Quiz</div>
@@ -278,6 +282,7 @@ let currentAnswered = false;
 let timerInterval = null;
 let currentType = 'qcm';
 let selectedIndexes = [];
+let resultsRevealTimeout = null; // fix race condition
 
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -311,9 +316,14 @@ socket.on('join:ok', ({ name, quizTitle, questionCount }) => {
 });
 
 socket.on('question:start', data => {
+  // ── FIX : annuler le timeout de révélation de la question précédente ──
+  if (resultsRevealTimeout) { clearTimeout(resultsRevealTimeout); resultsRevealTimeout = null; }
+
   currentAnswered = false;
   selectedIndexes = [];
   currentType = data.type || 'qcm';
+
+  Audio.startMusic();
 
   // Overlay d'intro (Question X)
   const old = document.getElementById('q-intro-overlay');
@@ -380,6 +390,7 @@ function updateTimer(t, total) {
   el.textContent = Math.max(0, t);
   el.className = 'timer-circle' + (t <= 5 ? ' urgent' : '');
   if (prog) prog.style.width = Math.max(0, t / total * 100) + '%';
+  if (t > 0 && t <= 10) Audio.tick(t <= 5);
 }
 
 function answer(index) {
@@ -428,6 +439,7 @@ socket.on('answer:ok', ({ correct, points }) => {
 });
 
 function showAnswerResult(correct, points) {
+  if (correct) Audio.correct(); else Audio.wrong();
   document.getElementById('result-icon').textContent = correct ? '✅' : '❌';
   document.getElementById('result-label').textContent = correct ? 'Bonne réponse !' : 'Mauvaise réponse…';
   document.getElementById('result-points').textContent = correct ? `+${points.toLocaleString('fr-FR')} pts` : '0 pts';
@@ -446,7 +458,8 @@ socket.on('question:results', data => {
   });
   // Rester sur l'écran question 1.5s pour voir la révélation, puis leaderboard
   show('screen-question');
-  setTimeout(() => {
+  resultsRevealTimeout = setTimeout(() => {
+    resultsRevealTimeout = null;
     renderLeaderboard(data.leaderboard, 'lb-list');
     show('screen-leaderboard');
   }, 1500);
@@ -454,6 +467,8 @@ socket.on('question:results', data => {
 
 socket.on('game:end', ({ leaderboard }) => {
   if (timerInterval) clearInterval(timerInterval);
+  Audio.stopMusic();
+  Audio.endGame();
   const me = leaderboard.find(p => p.name === myName);
   const rank = me ? me.rank : '?';
   const score = me ? me.score : myScore;
@@ -477,6 +492,15 @@ function renderLeaderboard(leaderboard, listId) {
   `).join('');
 }
 
+function toggleMusic() {
+  const on = Audio.toggleMusic();
+  document.getElementById('btn-music').style.opacity = on ? '1' : '0.4';
+}
+function toggleSfx() {
+  const on = Audio.toggleSfx();
+  document.getElementById('btn-sfx').style.opacity = on ? '1' : '0.4';
+}
+
 socket.on('kicked', () => { document.getElementById('abort-msg').textContent = 'Tu as été expulsé(e)'; show('screen-abort'); });
 socket.on('game:aborted', () => { document.getElementById('abort-msg').textContent = 'La partie a été annulée'; show('screen-abort'); });
 socket.on('error', msg => setErr(msg));
@@ -484,6 +508,121 @@ socket.on('error', msg => setErr(msg));
 function esc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── Moteur Audio ─────────────────────────────────────────────
+const Audio = (() => {
+  let ctx, mGain, sGain;
+  let musicOn = true, sfxOn = true;
+  let loopRunning = false, loopTimer = null;
+  let beatCount = 0, nextBeatTime = 0;
+  const BPM = 126;
+
+  function init() {
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    mGain = ctx.createGain(); mGain.gain.value = 0.22; mGain.connect(ctx.destination);
+    sGain = ctx.createGain(); sGain.gain.value = 0.85; sGain.connect(ctx.destination);
+  }
+
+  function osc(freq, type, t0, dur, vol, dest) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(dest || sGain);
+    o.start(t0); o.stop(t0 + dur + 0.01);
+  }
+
+  function noise(t0, dur, vol, fType, fFreq, dest) {
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const f = ctx.createBiquadFilter(); f.type = fType; f.frequency.value = fFreq;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(f); f.connect(g); g.connect(dest || mGain);
+    src.start(t0); src.stop(t0 + dur + 0.01);
+  }
+
+  function correct() {
+    if (!sfxOn) return; init();
+    [523,659,784,1047].forEach((f,i) => osc(f,'sine', ctx.currentTime+i*.09, .22, .35));
+  }
+
+  function wrong() {
+    if (!sfxOn) return; init();
+    [380,280,210].forEach((f,i) => osc(f,'sawtooth', ctx.currentTime+i*.13, .25, .18));
+  }
+
+  function tick(urgent) {
+    if (!sfxOn) return; init();
+    osc(urgent ? 1400 : 1000, 'square', ctx.currentTime, .04, urgent ? .18 : .07);
+  }
+
+  function endGame() {
+    if (!sfxOn) return; init();
+    [523,523,659,523,784,1047].forEach((f,i) => osc(f,'triangle', ctx.currentTime+i*.18, .3, .45));
+  }
+
+  // ── Beat ─────────────────────────────────────────────────
+  function kick(t) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(.001, t+.45);
+    g.gain.setValueAtTime(.8, t); g.gain.exponentialRampToValueAtTime(.0001, t+.45);
+    o.connect(g); g.connect(mGain); o.start(t); o.stop(t+.46);
+  }
+  function snare(t) { noise(t, .12, .28, 'bandpass', 2200, mGain); }
+  function hihat(t, acc) { noise(t, acc?.06:.03, acc?.2:.09, 'highpass', 7500, mGain); }
+  function bass(t, freq, dur) { osc(freq, 'triangle', t, dur, .5, mGain); }
+
+  const BASS = [98,0,0,0,110,0,0,0,98,0,0,116,110,0,0,0];
+
+  function scheduleBeat(t, step) {
+    const s = (60/BPM)/4;
+    if (step===0||step===8) kick(t);
+    if (step===4||step===12) snare(t);
+    if (step%2===0) hihat(t, step%4===0);
+    if (BASS[step]) bass(t, BASS[step], s*1.7);
+  }
+
+  function scheduleLoop() {
+    if (!loopRunning) return;
+    const ahead = 0.25, s16 = (60/BPM)/4;
+    while (nextBeatTime < ctx.currentTime + ahead) {
+      scheduleBeat(nextBeatTime, beatCount % 16);
+      nextBeatTime += s16; beatCount++;
+    }
+    loopTimer = setTimeout(scheduleLoop, 100);
+  }
+
+  function startMusic() {
+    if (!musicOn || loopRunning) return;
+    init(); loopRunning = true; beatCount = 0;
+    nextBeatTime = ctx.currentTime + 0.1;
+    scheduleLoop();
+  }
+
+  function stopMusic() {
+    loopRunning = false;
+    if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
+    if (mGain && ctx) {
+      mGain.gain.setValueAtTime(mGain.gain.value, ctx.currentTime);
+      mGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.2);
+      setTimeout(() => { if (mGain) mGain.gain.value = .22; }, 1400);
+    }
+  }
+
+  function toggleMusic() {
+    musicOn = !musicOn;
+    musicOn ? startMusic() : stopMusic();
+    return musicOn;
+  }
+  function toggleSfx() { sfxOn = !sfxOn; return sfxOn; }
+
+  return { correct, wrong, tick, endGame, startMusic, stopMusic, toggleMusic, toggleSfx };
+})();
 </script>
 </body>
 </html>
