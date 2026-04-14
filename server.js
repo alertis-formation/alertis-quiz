@@ -5,13 +5,63 @@ const fs = require('fs');
 const path = require('path');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
+const session = require('express-session');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.json());
+
+// ============================================================
+// Sessions
+// ============================================================
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'kahoot-maison-secret-change-moi',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 24 * 60 * 60 * 1000 }, // 24h
+}));
+
+// ============================================================
+// Middleware : protection de l'admin
+// ============================================================
+function requireAuth(req, res, next) {
+  if (req.session.isAdmin) return next();
+  res.redirect('/login.html');
+}
+
+// Servir admin.html uniquement si connecté
+app.get('/admin.html', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'private', 'admin.html'));
+});
+
+// Tout le reste est public (play.html, index.html, login.html...)
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ============================================================
+// API Auth
+// ============================================================
+app.post('/api/login', (req, res) => {
+  const { email, password } = req.body;
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@example.com';
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'changeme';
+
+  if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    req.session.isAdmin = true;
+    return res.json({ ok: true });
+  }
+  res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+});
+
+app.post('/api/logout', (req, res) => {
+  req.session.destroy();
+  res.json({ ok: true });
+});
+
+app.get('/api/auth-check', (req, res) => {
+  res.json({ authenticated: !!req.session.isAdmin });
+});
 
 // ============================================================
 // Stockage JSON persistant

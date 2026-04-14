@@ -142,6 +142,9 @@
   <span class="logo">🎮 Kahoot Maison</span>
   <button class="tab-btn active" onclick="showTab('quizzes')">📚 Mes Quiz</button>
   <button class="tab-btn" onclick="showTab('game')" id="tab-game">🚀 Lancer une partie</button>
+  <div style="margin-left:auto;">
+    <button class="tab-btn" onclick="logout()" style="color:#ef4444;">🚪 Déconnexion</button>
+  </div>
 </nav>
 
 <!-- PAGE : GESTION DES QUIZZES -->
@@ -555,6 +558,11 @@ function toast(msg, type='ok') {
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
+}
+
+async function logout() {
+  await fetch('/api/logout', { method: 'POST' });
+  window.location.href = '/login.html';
 }
 
 loadQuizzes();
