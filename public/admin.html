@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kahoot Maison — Admin</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --card: #1a1a2e;
+    --card2: #16213e;
+    --purple: #7c3aed;
+    --purple-light: #a855f7;
+    --green: #10b981;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --blue: #3b82f6;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --border: #2d3748;
+    --radius: 12px;
+    --c1: #ef4444; --c2: #3b82f6; --c3: #10b981; --c4: #f59e0b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  nav { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; gap: 24px; height: 60px; position: sticky; top: 0; z-index: 100; }
+  .logo { font-size: 1.3rem; font-weight: 800; background: linear-gradient(135deg, var(--purple-light), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .tab-btn { background: none; border: none; color: var(--muted); font-size: 0.95rem; font-weight: 600; padding: 8px 16px; cursor: pointer; border-radius: 8px; transition: all .2s; }
+  .tab-btn:hover { color: var(--text); background: var(--card2); }
+  .tab-btn.active { color: var(--purple-light); background: rgba(124,58,237,.15); }
+
+  .page { display: none; padding: 28px 24px; max-width: 960px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .card-title { font-size: 1rem; font-weight: 700; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; transition: all .2s; }
+  .btn-primary { background: var(--purple); color: #fff; }
+  .btn-primary:hover { background: var(--purple-light); }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-green:hover { filter: brightness(1.1); }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-red:hover { filter: brightness(1.1); }
+  .btn-ghost { background: var(--card2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--purple); }
+  .btn-sm { padding: 6px 12px; font-size: 0.82rem; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  input, select, textarea {
+    background: var(--card2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: 10px 14px; font-size: 0.9rem; width: 100%;
+    transition: border-color .2s; font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--purple); }
+  textarea { resize: vertical; min-height: 60px; }
+  label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+  .field { margin-bottom: 14px; }
+
+  .quiz-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; transition: border-color .2s; }
+  .quiz-card:hover { border-color: var(--purple); }
+  .quiz-name { font-weight: 700; font-size: 1rem; }
+  .quiz-meta { font-size: 0.8rem; color: var(--muted); margin-top: 3px; }
+  .quiz-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .big { font-size: 3rem; margin-bottom: 12px; }
+
+  #editor { display: none; }
+  #editor.open { display: block; }
+  .question-item { background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+  .question-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .q-num { font-size: 0.8rem; font-weight: 700; color: var(--purple-light); }
+  .choices-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .choice-row { display: flex; align-items: center; gap: 8px; }
+  .choice-dot { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: .7rem; color: #fff; font-weight: 700; }
+  .correct-radio { accent-color: var(--purple); width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+
+  #panel-setup, #panel-waiting, #panel-question, #panel-results, #panel-end { display: none; }
+
+  .code-display { font-size: 3.5rem; font-weight: 900; letter-spacing: 12px; color: var(--purple-light); text-align: center; padding: 16px 0; }
+  .qr-wrap { display: flex; justify-content: center; margin: 12px 0; }
+  .qr-wrap img { border-radius: 12px; border: 4px solid var(--purple); }
+  .join-url { text-align: center; font-size: 0.82rem; color: var(--muted); word-break: break-all; margin-top: 6px; }
+
+  .players-grid { display: flex; flex-wrap: wrap; gap: 8px; min-height: 50px; }
+  .player-chip { background: var(--card2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 0.82rem; display: flex; align-items: center; gap: 6px; }
+  .player-chip button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0; }
+  .player-chip button:hover { color: var(--red); }
+
+  .q-text-big { font-size: 1.6rem; font-weight: 800; text-align: center; padding: 20px; line-height: 1.3; }
+  .choices-display { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+  .choice-box { border-radius: 10px; padding: 14px 16px; font-weight: 700; font-size: 0.95rem; }
+  .choice-box.c0 { background: rgba(239,68,68,.2); border: 2px solid var(--c1); color: var(--c1); }
+  .choice-box.c1 { background: rgba(59,130,246,.2); border: 2px solid var(--c2); color: var(--c2); }
+  .choice-box.c2 { background: rgba(16,185,129,.2); border: 2px solid var(--c3); color: var(--c3); }
+  .choice-box.c3 { background: rgba(245,158,11,.2); border: 2px solid var(--c4); color: var(--c4); }
+
+  .progress-bar-wrap { height: 8px; background: var(--card2); border-radius: 4px; overflow: hidden; margin: 8px 0; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--purple), var(--blue)); border-radius: 4px; transition: width .4s ease; }
+
+  .answer-bars { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
+  .answer-bar { display: flex; align-items: center; gap: 10px; }
+  .answer-bar-label { width: 120px; font-size: 0.82rem; font-weight: 600; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .answer-bar-fill { flex: 1; height: 28px; border-radius: 6px; display: flex; align-items: center; padding-left: 8px; font-size: 0.82rem; font-weight: 700; transition: width .5s ease; min-width: 32px; }
+  .answer-bar-count { width: 30px; text-align: right; font-size: 0.82rem; color: var(--muted); flex-shrink: 0; }
+
+  .leaderboard { list-style: none; }
+  .lb-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; margin-bottom: 6px; background: var(--card2); }
+  .lb-rank { font-size: 1.2rem; width: 28px; text-align: center; }
+  .lb-name { flex: 1; font-weight: 700; }
+  .lb-score { font-weight: 800; color: var(--purple-light); }
+  .lb-row:nth-child(1) { background: rgba(245,158,11,.15); border: 1px solid var(--yellow); }
+  .lb-row:nth-child(2) { background: rgba(148,163,184,.1); }
+  .lb-row:nth-child(3) { background: rgba(180,83,9,.1); }
+
+  .timer-num { font-size: 2.5rem; font-weight: 900; color: var(--purple-light); text-align: center; }
+  .stat-pill { display: inline-block; background: var(--card2); border-radius: 20px; padding: 4px 14px; font-size: 0.82rem; color: var(--muted); border: 1px solid var(--border); }
+  .section-title { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .row { display: flex; gap: 12px; align-items: flex-start; }
+  .row .field { flex: 1; }
+
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 20px; font-size: .9rem; font-weight: 600; animation: slide-in .3s ease; z-index: 999; }
+  .toast.err { border-color: var(--red); color: var(--red); }
+  .toast.ok { border-color: var(--green); color: var(--green); }
+  @keyframes slide-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .hidden { display: none !important; }
+  @media (max-width: 600px) {
+    .choices-grid, .choices-display { grid-template-columns: 1fr; }
+    .code-display { font-size: 2.5rem; letter-spacing: 8px; }
+    .q-text-big { font-size: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">🎮 Kahoot Maison</span>
+  <button class="tab-btn active" onclick="showTab('quizzes')">📚 Mes Quiz</button>
+  <button class="tab-btn" onclick="showTab('game')" id="tab-game">🚀 Lancer une partie</button>
+</nav>
+
+<!-- PAGE : GESTION DES QUIZZES -->
+<div class="page active" id="page-quizzes">
+
+  <div id="quiz-list-view">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h2 style="font-size:1.4rem;font-weight:800;">Mes Quiz</h2>
+      <button class="btn btn-primary" onclick="newQuiz()">+ Nouveau quiz</button>
+    </div>
+    <div id="quiz-list"></div>
+  </div>
+
+  <div id="editor">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+      <button class="btn btn-ghost btn-sm" onclick="closeEditor()">← Retour</button>
+      <h2 style="font-size:1.3rem;font-weight:800;" id="editor-title">Éditeur de quiz</h2>
+    </div>
+    <div class="card">
+      <div class="field">
+        <label>Titre du quiz</label>
+        <input type="text" id="quiz-title-input" placeholder="Ex: Culture générale S2" maxlength="80" />
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div class="section-title" style="margin:0;">Questions</div>
+      <button class="btn btn-primary btn-sm" onclick="addQuestion()">+ Ajouter une question</button>
+    </div>
+    <div id="questions-list"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button class="btn btn-green" onclick="saveQuiz()">💾 Sauvegarder</button>
+      <button class="btn btn-ghost" onclick="closeEditor()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE : PARTIE EN COURS -->
+<div class="page" id="page-game">
+
+  <div id="panel-setup" style="display:block;">
+    <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:20px;">🚀 Lancer une partie</h2>
+    <div class="card">
+      <div class="field">
+        <label>Choisir un quiz</label>
+        <select id="quiz-select">
+          <option value="">— Sélectionner un quiz —</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="createGame()">Créer la partie</button>
+    </div>
+  </div>
+
+  <div id="panel-waiting">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="card">
+        <div class="section-title">Code de la partie</div>
+        <div class="code-display" id="game-code-display">------</div>
+        <div class="qr-wrap"><img id="qr-img" src="" alt="QR Code" width="200" /></div>
+        <div class="join-url" id="join-url"></div>
+        <div style="text-align:center;margin-top:12px;">
+          <button class="btn btn-ghost btn-sm" onclick="copyJoinUrl()">📋 Copier le lien</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Joueurs connectés</div>
+          <span class="stat-pill" id="player-count">0 joueur(s)</span>
+        </div>
+        <div class="players-grid" id="players-grid"></div>
+        <hr class="divider" />
+        <button class="btn btn-green" id="btn-start" onclick="startGame()" disabled>▶ Démarrer la partie</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-question">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span class="stat-pill" id="q-counter">Question 1/1</span>
+        <span class="stat-pill" id="q-answers-progress">0/0 réponses</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="q-progress-bar" style="width:0%"></div>
+      </div>
+      <div class="timer-num" id="q-timer">⏱ 20</div>
+      <div class="q-text-big" id="q-text"></div>
+      <div class="choices-display" id="q-choices-display"></div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn btn-red" onclick="stopQuestion()">⏹ Terminer la question</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-results">
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title" style="margin-bottom:14px;" id="results-title">Résultats</div>
+      <div id="answer-bars"></div>
+      <div id="explanation-box" class="hidden" style="background:var(--card2);border-radius:8px;padding:12px;margin-top:12px;font-size:.9rem;color:var(--muted);border-left:3px solid var(--purple);"></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px;">🏆 Classement</div>
+      <ul class="leaderboard" id="results-leaderboard"></ul>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn btn-primary" id="btn-next" onclick="nextQuestion()">Suivant ▶</button>
+        <button class="btn btn-red" onclick="endGameAdmin()">🛑 Terminer la partie</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-end">
+    <div class="card" style="text-align:center;padding:40px 20px;">
+      <div style="font-size:3rem;margin-bottom:12px;">🏆</div>
+      <h2 style="font-size:1.8rem;font-weight:800;margin-bottom:24px;">Partie terminée !</h2>
+      <ul class="leaderboard" id="end-leaderboard" style="max-width:400px;margin:0 auto 24px;"></ul>
+      <button class="btn btn-primary" onclick="resetGame()">🔄 Nouvelle partie</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let quizzes = [];
+let editingQuiz = null;
+let currentGameCode = null;
+let timerInterval = null;
+
+const socket = io();
+
+function showTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`page-${tab}`).classList.add('active');
+  event.target.classList.add('active');
+  if (tab === 'game') loadQuizSelect();
+}
+
+async function loadQuizzes() {
+  const res = await fetch('/api/quizzes');
+  quizzes = await res.json();
+  renderQuizList();
+}
+
+function renderQuizList() {
+  const el = document.getElementById('quiz-list');
+  if (quizzes.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">📝</div><p>Aucun quiz pour l'instant.</p><p style="margin-top:8px;font-size:.85rem;">Créez votre premier quiz !</p></div>`;
+    return;
+  }
+  el.innerHTML = quizzes.map(q => `
+    <div class="quiz-card">
+      <div>
+        <div class="quiz-name">${esc(q.title)}</div>
+        <div class="quiz-meta">${q.questions.length} question(s) · Créé le ${new Date(q.createdAt).toLocaleDateString('fr-FR')}</div>
+      </div>
+      <div class="quiz-actions">
+        <button class="btn btn-ghost btn-sm" onclick="editQuiz('${q.id}')">✏️ Éditer</button>
+        <button class="btn btn-primary btn-sm" onclick="launchQuiz('${q.id}')">▶ Lancer</button>
+        <button class="btn btn-red btn-sm" onclick="deleteQuiz('${q.id}')">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function loadQuizSelect() {
+  const sel = document.getElementById('quiz-select');
+  sel.innerHTML = '<option value="">— Sélectionner un quiz —</option>' +
+    quizzes.map(q => `<option value="${q.id}">${esc(q.title)} (${q.questions.length} questions)</option>`).join('');
+}
+
+async function deleteQuiz(id) {
+  if (!confirm('Supprimer ce quiz ?')) return;
+  await fetch(`/api/quizzes/${id}`, { method: 'DELETE' });
+  toast('Quiz supprimé', 'ok');
+  loadQuizzes();
+}
+
+function launchQuiz(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-game').classList.add('active');
+  document.getElementById('tab-game').classList.add('active');
+  loadQuizSelect();
+  document.getElementById('quiz-select').value = id;
+}
+
+function newQuiz() {
+  editingQuiz = { id: null, title: '', questions: [] };
+  openEditor('Nouveau quiz');
+}
+
+function editQuiz(id) {
+  const q = quizzes.find(q => q.id === id);
+  editingQuiz = JSON.parse(JSON.stringify(q));
+  openEditor(`Éditer : ${q.title}`);
+}
+
+function openEditor(title) {
+  document.getElementById('quiz-list-view').style.display = 'none';
+  document.getElementById('editor').classList.add('open');
+  document.getElementById('editor-title').textContent = title;
+  document.getElementById('quiz-title-input').value = editingQuiz.title;
+  renderQuestionsList();
+}
+
+function closeEditor() {
+  document.getElementById('editor').classList.remove('open');
+  document.getElementById('quiz-list-view').style.display = 'block';
+  editingQuiz = null;
+}
+
+function renderQuestionsList() {
+  const container = document.getElementById('questions-list');
+  if (editingQuiz.questions.length === 0) {
+    container.innerHTML = `<div style="text-align:center;color:var(--muted);padding:30px;">Ajoutez votre première question !</div>`;
+    return;
+  }
+  container.innerHTML = editingQuiz.questions.map((q, qi) => `
+    <div class="question-item" id="q-item-${qi}">
+      <div class="question-header">
+        <span class="q-num">Question ${qi + 1}</span>
+        <div style="display:flex;gap:6px;">
+          ${qi > 0 ? `<button class="btn btn-ghost btn-sm" onclick="moveQ(${qi},-1)">↑</button>` : ''}
+          ${qi < editingQuiz.questions.length-1 ? `<button class="btn btn-ghost btn-sm" onclick="moveQ(${qi},1)">↓</button>` : ''}
+          <button class="btn btn-red btn-sm" onclick="removeQ(${qi})">✕</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Énoncé de la question</label>
+        <textarea oninput="editingQuiz.questions[${qi}].text=this.value" rows="2">${esc(q.text)}</textarea>
+      </div>
+      <div class="field">
+        <label>URL d'image (optionnel)</label>
+        <input type="url" value="${esc(q.image||'')}" placeholder="https://..." oninput="editingQuiz.questions[${qi}].image=this.value" />
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Temps (secondes)</label>
+          <input type="number" value="${q.timeLimit||20}" min="5" max="120" style="width:90px" oninput="editingQuiz.questions[${qi}].timeLimit=+this.value" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Choix de réponses — cochez la bonne réponse ✓</label>
+        <div class="choices-grid">
+          ${q.choices.map((c, ci) => `
+            <div class="choice-row">
+              <div class="choice-dot" style="background:${['#ef4444','#3b82f6','#10b981','#f59e0b'][ci]}">${['A','B','C','D'][ci]}</div>
+              <input type="text" value="${esc(c)}" placeholder="Choix ${ci+1}" oninput="editingQuiz.questions[${qi}].choices[${ci}]=this.value" style="flex:1" />
+              <input type="radio" class="correct-radio" name="correct-${qi}" value="${ci}" ${q.correctIndex===ci?'checked':''} onchange="editingQuiz.questions[${qi}].correctIndex=${ci}" title="Bonne réponse" />
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="field">
+        <label>Explication après la réponse (optionnel)</label>
+        <input type="text" value="${esc(q.explanation||'')}" placeholder="Explication..." oninput="editingQuiz.questions[${qi}].explanation=this.value" />
+      </div>
+    </div>
+  `).join('');
+}
+
+function addQuestion() {
+  editingQuiz.questions.push({ text: '', choices: ['', '', '', ''], correctIndex: 0, timeLimit: 20, image: '', explanation: '' });
+  renderQuestionsList();
+  setTimeout(() => {
+    document.querySelector(`#q-item-${editingQuiz.questions.length - 1}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+function removeQ(idx) {
+  if (!confirm('Supprimer cette question ?')) return;
+  editingQuiz.questions.splice(idx, 1);
+  renderQuestionsList();
+}
+
+function moveQ(idx, dir) {
+  const qs = editingQuiz.questions;
+  const ni = idx + dir;
+  if (ni < 0 || ni >= qs.length) return;
+  [qs[idx], qs[ni]] = [qs[ni], qs[idx]];
+  renderQuestionsList();
+}
+
+async function saveQuiz() {
+  const title = document.getElementById('quiz-title-input').value.trim();
+  if (!title) return toast('Titre requis', 'err');
+  for (const [i, q] of editingQuiz.questions.entries()) {
+    if (!q.text.trim()) return toast(`Question ${i+1} : énoncé vide`, 'err');
+    if (q.choices.some(c => !c.trim())) return toast(`Question ${i+1} : toutes les réponses doivent être remplies`, 'err');
+  }
+  editingQuiz.title = title;
+  const method = editingQuiz.id ? 'PUT' : 'POST';
+  const url = editingQuiz.id ? `/api/quizzes/${editingQuiz.id}` : '/api/quizzes';
+  await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editingQuiz) });
+  toast('Quiz sauvegardé ✓', 'ok');
+  await loadQuizzes();
+  closeEditor();
+}
+
+function createGame() {
+  const quizId = document.getElementById('quiz-select').value;
+  if (!quizId) return toast('Sélectionne un quiz', 'err');
+  socket.emit('admin:create', { quizId });
+}
+
+socket.on('admin:created', async ({ code }) => {
+  currentGameCode = code;
+  document.getElementById('game-code-display').textContent = code;
+  showPanel('waiting');
+  const res = await fetch(`/api/qr/${code}`);
+  const data = await res.json();
+  document.getElementById('qr-img').src = data.qr;
+  document.getElementById('join-url').textContent = data.url;
+  window._joinUrl = data.url;
+});
+
+function copyJoinUrl() {
+  navigator.clipboard.writeText(window._joinUrl || '');
+  toast('Lien copié !', 'ok');
+}
+
+socket.on('players:update', players => {
+  document.getElementById('players-grid').innerHTML = players.map(p => `
+    <div class="player-chip">${esc(p.name)}<button onclick="kickPlayer('${p.id}')" title="Expulser">✕</button></div>
+  `).join('');
+  const count = players.length;
+  document.getElementById('player-count').textContent = `${count} joueur(s)`;
+  document.getElementById('btn-start').disabled = count === 0;
+});
+
+function kickPlayer(id) { socket.emit('admin:kick', { code: currentGameCode, playerId: id }); }
+function startGame() { socket.emit('admin:start', { code: currentGameCode }); }
+
+socket.on('question:start', data => {
+  showPanel('question');
+  document.getElementById('q-counter').textContent = `Question ${data.index + 1}/${data.total}`;
+  document.getElementById('q-text').textContent = data.text;
+  document.getElementById('q-answers-progress').textContent = `0/? réponses`;
+  const colors = ['c0','c1','c2','c3'], labels = ['🔴','🔵','🟢','🟡'];
+  document.getElementById('q-choices-display').innerHTML = data.choices.map((c, i) =>
+    `<div class="choice-box ${colors[i]}">${labels[i]} ${esc(c)}</div>`
+  ).join('');
+  if (timerInterval) clearInterval(timerInterval);
+  let t = data.timeLimit;
+  document.getElementById('q-timer').textContent = `⏱ ${t}`;
+  document.getElementById('q-progress-bar').style.width = '100%';
+  timerInterval = setInterval(() => {
+    t--;
+    document.getElementById('q-timer').textContent = `⏱ ${Math.max(0, t)}`;
+    document.getElementById('q-progress-bar').style.width = Math.max(0, t / data.timeLimit * 100) + '%';
+    if (t <= 0) clearInterval(timerInterval);
+  }, 1000);
+  window._qData = data;
+});
+
+socket.on('answers:progress', ({ answered, total }) => {
+  document.getElementById('q-answers-progress').textContent = `${answered}/${total} réponses`;
+});
+
+function stopQuestion() { socket.emit('admin:stop-q', { code: currentGameCode }); }
+
+socket.on('question:results', data => {
+  if (timerInterval) clearInterval(timerInterval);
+  showPanel('results');
+  const q = window._qData;
+  const colors = ['var(--c1)','var(--c2)','var(--c3)','var(--c4)'], labels = ['🔴 A','🔵 B','🟢 C','🟡 D'];
+  const maxCount = Math.max(...data.counts, 1);
+  document.getElementById('results-title').textContent = `✅ Bonne réponse : ${q ? esc(q.choices[data.correctIndex]) : `Choix ${data.correctIndex+1}`}`;
+  document.getElementById('answer-bars').innerHTML = (q ? q.choices : []).map((c, i) => {
+    const count = data.counts[i] || 0;
+    const pct = Math.round(count / maxCount * 100);
+    return `<div class="answer-bar">
+      <div class="answer-bar-label" title="${esc(c)}">${'🔴🔵🟢🟡'.split('')[i*2]}${'🔴🔵🟢🟡'.split('')[i*2+1]} ${esc(c)}</div>
+      <div class="answer-bar-fill" style="background:${colors[i]};width:${pct}%;border:${i===data.correctIndex?'2px solid #fff':'none'}">${i===data.correctIndex?'✓':''}</div>
+      <div class="answer-bar-count">${count}</div>
+    </div>`;
+  }).join('');
+  const expBox = document.getElementById('explanation-box');
+  if (data.explanation) { expBox.textContent = '💡 ' + data.explanation; expBox.classList.remove('hidden'); }
+  else expBox.classList.add('hidden');
+  document.getElementById('results-leaderboard').innerHTML = data.leaderboard.slice(0,5).map(p =>
+    `<li class="lb-row"><span class="lb-rank">${['🥇','🥈','🥉'][p.rank-1]||'#'+p.rank}</span><span class="lb-name">${esc(p.name)}</span><span class="lb-score">${p.score.toLocaleString('fr-FR')} pts</span></li>`
+  ).join('');
+  document.getElementById('btn-next').textContent = data.isLast ? '🏁 Voir le classement final' : 'Suivant ▶';
+});
+
+function nextQuestion() { socket.emit('admin:next', { code: currentGameCode }); }
+function endGameAdmin() { if (!confirm('Terminer la partie ?')) return; socket.emit('admin:end-game', { code: currentGameCode }); }
+
+socket.on('game:end', ({ leaderboard }) => {
+  showPanel('end');
+  document.getElementById('end-leaderboard').innerHTML = leaderboard.slice(0,10).map(p =>
+    `<li class="lb-row"><span class="lb-rank">${['🥇','🥈','🥉'][p.rank-1]||'#'+p.rank}</span><span class="lb-name">${esc(p.name)}</span><span class="lb-score">${p.score.toLocaleString('fr-FR')} pts</span></li>`
+  ).join('');
+});
+
+function resetGame() { currentGameCode = null; showPanel('setup'); loadQuizSelect(); }
+socket.on('error', msg => toast(msg, 'err'));
+
+function showPanel(name) {
+  ['setup','waiting','question','results','end'].forEach(p => document.getElementById(`panel-${p}`).style.display = 'none');
+  document.getElementById(`panel-${name}`).style.display = 'block';
+}
+
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg, type='ok') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+loadQuizzes();
+showPanel('setup');
+</script>
+</body>
+</html>

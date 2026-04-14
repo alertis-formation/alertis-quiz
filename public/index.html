@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kahoot Maison</title>
+<style>
+  body { background:#0f0f1a; color:#f1f5f9; font-family:'Segoe UI',system-ui,sans-serif;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:20px; text-align:center; }
+  .logo { font-size:3rem; font-weight:900; background:linear-gradient(135deg,#a855f7,#3b82f6);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
+  .subtitle { color:#94a3b8; margin-bottom:40px; }
+  .cards { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; }
+  .card { background:#1a1a2e; border:1px solid #2d3748; border-radius:16px; padding:32px 28px; width:220px; transition:border-color .2s, transform .2s; }
+  .card:hover { border-color:#7c3aed; transform:translateY(-4px); }
+  .card .icon { font-size:2.5rem; margin-bottom:12px; }
+  .card h2 { font-size:1.1rem; margin-bottom:8px; }
+  .card p { color:#94a3b8; font-size:.85rem; margin-bottom:16px; }
+  .btn { display:block; padding:12px; border-radius:10px; font-weight:700; text-decoration:none; transition:filter .2s; }
+  .btn-admin { background:#7c3aed; color:#fff; }
+  .btn-player { background:#10b981; color:#fff; }
+  .btn:hover { filter:brightness(1.15); }
+</style>
+</head>
+<body>
+  <div class="logo">🎮 Kahoot Maison</div>
+  <div class="subtitle">Quiz multijoueur en temps réel — 100% gratuit &amp; auto-hébergé</div>
+  <div class="cards">
+    <div class="card">
+      <div class="icon">🛠</div>
+      <h2>Organisateur</h2>
+      <p>Crée des quiz et lance les parties</p>
+      <a href="/admin.html" class="btn btn-admin">Tableau de bord</a>
+    </div>
+    <div class="card">
+      <div class="icon">🎮</div>
+      <h2>Joueur</h2>
+      <p>Rejoins une partie avec un code</p>
+      <a href="/play.html" class="btn btn-player">Rejoindre</a>
+    </div>
+  </div>
+</body>
+</html>

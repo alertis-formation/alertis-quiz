@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Kahoot Maison — Joueur</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  :root {
+    --bg: #0f0f1a; --card: #1a1a2e; --purple: #7c3aed; --purple-light: #a855f7;
+    --green: #10b981; --red: #ef4444; --yellow: #f59e0b; --blue: #3b82f6;
+    --text: #f1f5f9; --muted: #94a3b8; --border: #2d3748;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+
+  .screen { display: none; width: 100%; max-width: 480px; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  .big-title { font-size: 2rem; font-weight: 900; text-align: center; margin-bottom: 8px; }
+  .subtitle { color: var(--muted); text-align: center; font-size: 0.9rem; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+
+  .field { margin-bottom: 16px; }
+  label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .06em; }
+  input[type="text"] {
+    background: #0f0f1a; border: 2px solid var(--border); border-radius: 10px;
+    color: var(--text); padding: 14px 16px; font-size: 1.1rem; font-weight: 700; width: 100%;
+    transition: border-color .2s; letter-spacing: .05em; font-family: inherit;
+  }
+  input[type="text"]:focus { outline: none; border-color: var(--purple-light); }
+
+  .btn-join { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--purple), #6366f1); color: #fff;
+    border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 800; cursor: pointer;
+    transition: transform .15s, filter .15s; margin-top: 8px; }
+  .btn-join:active { transform: scale(.97); filter: brightness(.9); }
+  .btn-join:disabled { opacity: .4; cursor: not-allowed; }
+
+  #screen-waiting { align-items: center; text-align: center; }
+  .pulse-ring { width: 100px; height: 100px; border-radius: 50%; background: rgba(124,58,237,.15); border: 3px solid var(--purple);
+    display: flex; align-items: center; justify-content: center; font-size: 2.5rem;
+    animation: pulse 2s ease-in-out infinite; margin: 0 auto 20px; }
+  @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.08);opacity:.7} }
+  .player-name-badge { display: inline-block; background: linear-gradient(135deg, var(--purple), #6366f1);
+    border-radius: 20px; padding: 6px 20px; font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; }
+
+  #screen-question { gap: 12px; }
+  .q-header { display: flex; align-items: center; justify-content: space-between; }
+  .q-progress-label { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+  .progress-wrap { height: 6px; background: var(--card); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--purple), var(--blue)); border-radius: 3px; transition: width 1s linear; }
+  .timer-circle { width: 60px; height: 60px; border-radius: 50%; background: var(--card); border: 3px solid var(--purple);
+    display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 900; color: var(--purple-light); transition: color .3s; }
+  .timer-circle.urgent { color: var(--red); border-color: var(--red); animation: shake .3s ease; }
+  @keyframes shake { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-3deg)} 75%{transform:rotate(3deg)} }
+
+  .q-image { border-radius: 12px; overflow: hidden; margin: 4px 0; max-height: 200px; object-fit: cover; width: 100%; }
+  .q-text { background: var(--card); border-radius: 14px; padding: 18px; font-size: 1.2rem; font-weight: 800; text-align: center; line-height: 1.4; }
+
+  .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .answer-btn { border: none; border-radius: 14px; padding: 18px 12px; font-size: 1rem; font-weight: 800; cursor: pointer;
+    transition: transform .12s, filter .12s, box-shadow .2s; text-align: center; line-height: 1.3;
+    display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 80px; color: #fff; }
+  .answer-btn:active { transform: scale(.95); }
+  .answer-btn:hover { filter: brightness(1.1); }
+  .answer-btn.c0 { background: linear-gradient(135deg, #ef4444, #dc2626); }
+  .answer-btn.c1 { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+  .answer-btn.c2 { background: linear-gradient(135deg, #10b981, #059669); }
+  .answer-btn.c3 { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .answer-btn:disabled { cursor: default; }
+  .answer-btn.selected { box-shadow: 0 0 0 4px rgba(255,255,255,.6); filter: brightness(1.15); }
+  .answer-btn.dimmed { filter: brightness(.45) saturate(.5); }
+  .answer-btn .shape { font-size: 1.4rem; }
+
+  #screen-result { align-items: center; text-align: center; }
+  .result-icon { font-size: 5rem; margin-bottom: 16px; animation: pop .4s cubic-bezier(.36,.07,.19,.97); }
+  @keyframes pop { 0%{transform:scale(0)} 70%{transform:scale(1.2)} 100%{transform:scale(1)} }
+  .result-label { font-size: 2rem; font-weight: 900; margin-bottom: 8px; }
+  .points-badge { display: inline-block; background: rgba(124,58,237,.2); border: 2px solid var(--purple);
+    border-radius: 20px; padding: 8px 24px; font-size: 1.3rem; font-weight: 900; color: var(--purple-light); margin-bottom: 12px; }
+  .waiting-next { color: var(--muted); font-size: .9rem; margin-top: 12px; }
+  .dot-loader { display: inline-flex; gap: 4px; }
+  .dot-loader span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: dot-blink 1.2s ease-in-out infinite; }
+  .dot-loader span:nth-child(2) { animation-delay: .2s; }
+  .dot-loader span:nth-child(3) { animation-delay: .4s; }
+  @keyframes dot-blink { 0%,80%,100%{transform:scale(.8);opacity:.5} 40%{transform:scale(1.1);opacity:1} }
+
+  #screen-leaderboard { align-items: center; }
+  .lb-list { width: 100%; list-style: none; }
+  .lb-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; margin-bottom: 8px; background: var(--card); border: 1px solid var(--border); }
+  .lb-row.me { border-color: var(--purple); background: rgba(124,58,237,.1); }
+  .lb-rank { width: 28px; text-align: center; font-size: 1.2rem; }
+  .lb-name { flex: 1; font-weight: 700; }
+  .lb-score { font-weight: 800; color: var(--purple-light); }
+  .lb-row:first-child { background: rgba(245,158,11,.12); border-color: var(--yellow); }
+  .lb-row:nth-child(2) { background: rgba(148,163,184,.08); }
+  .lb-row:nth-child(3) { background: rgba(180,83,9,.1); }
+
+  #screen-end { align-items: center; text-align: center; }
+  .final-trophy { font-size: 5rem; animation: trophy-bounce 1s ease; }
+  @keyframes trophy-bounce { 0%{transform:translateY(-40px);opacity:0} 60%{transform:translateY(8px)} 100%{transform:translateY(0);opacity:1} }
+  .final-rank { font-size: 3rem; font-weight: 900; margin: 12px 0; }
+  .final-score { color: var(--purple-light); font-size: 1.3rem; font-weight: 700; }
+
+  #screen-abort { text-align: center; }
+  .err-msg { color: var(--red); font-size: 0.85rem; text-align: center; margin-top: 8px; font-weight: 600; min-height: 20px; }
+  .logo-top { text-align: center; font-size: 1.1rem; font-weight: 800; margin-bottom: 20px;
+    background: linear-gradient(135deg, var(--purple-light), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- JOIN -->
+<div class="screen active" id="screen-join">
+  <div class="logo-top">🎮 Kahoot Maison</div>
+  <div class="card">
+    <div class="big-title">Rejoindre</div>
+    <div class="subtitle">Entre le code de la partie et ton pseudo</div>
+    <div class="field">
+      <label>Code de la partie</label>
+      <input type="text" id="input-code" placeholder="EX: ABC123" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+    </div>
+    <div class="field">
+      <label>Ton pseudo</label>
+      <input type="text" id="input-name" placeholder="Ex: Jean-Luc" maxlength="20" autocomplete="off" />
+    </div>
+    <div class="err-msg" id="join-err"></div>
+    <button class="btn-join" onclick="joinGame()">Rejoindre 🚀</button>
+  </div>
+</div>
+
+<!-- WAITING -->
+<div class="screen" id="screen-waiting">
+  <div class="pulse-ring">⏳</div>
+  <div class="player-name-badge" id="wait-name">Joueur</div>
+  <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px;" id="wait-quiz-title">Quiz</div>
+  <div style="color:var(--muted);font-size:.9rem;">En attente du démarrage…</div>
+  <div style="margin-top:16px;color:var(--muted);font-size:.8rem;" id="wait-qcount"></div>
+</div>
+
+<!-- QUESTION -->
+<div class="screen" id="screen-question">
+  <div class="q-header">
+    <span class="q-progress-label" id="q-prog-label">1/1</span>
+    <div class="timer-circle" id="q-timer">20</div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-fill" id="q-progress" style="width:100%"></div>
+  </div>
+  <img class="q-image hidden" id="q-image" src="" alt="" />
+  <div class="q-text" id="q-text">Question...</div>
+  <div class="answers-grid" id="answers-grid"></div>
+</div>
+
+<!-- ANSWER SENT -->
+<div class="screen" id="screen-result">
+  <div class="result-icon" id="result-icon">✅</div>
+  <div class="result-label" id="result-label">Bonne réponse !</div>
+  <div class="points-badge" id="result-points">+750 pts</div>
+  <div class="waiting-next">En attente du résultat <div class="dot-loader"><span></span><span></span><span></span></div></div>
+</div>
+
+<!-- LEADERBOARD INTERMÉDIAIRE -->
+<div class="screen" id="screen-leaderboard">
+  <div style="font-size:1.5rem;font-weight:900;margin-bottom:16px;text-align:center;">🏆 Classement</div>
+  <ul class="lb-list" id="lb-list"></ul>
+  <div style="color:var(--muted);font-size:.85rem;text-align:center;margin-top:12px;">Prochaine question dans un instant…</div>
+</div>
+
+<!-- END -->
+<div class="screen" id="screen-end">
+  <div class="final-trophy" id="end-trophy">🏆</div>
+  <div style="font-size:1.5rem;font-weight:800;margin-bottom:8px;">Partie terminée !</div>
+  <div class="final-rank" id="end-rank">#1</div>
+  <div class="final-score" id="end-score">1000 points</div>
+  <div style="margin-top:16px;color:var(--muted);font-size:.85rem;" id="end-name"></div>
+  <ul class="lb-list" id="end-lb-list" style="margin-top:20px;width:100%;"></ul>
+</div>
+
+<!-- ABORT -->
+<div class="screen" id="screen-abort">
+  <div style="text-align:center;">
+    <div style="font-size:4rem;margin-bottom:16px;">😢</div>
+    <div style="font-size:1.4rem;font-weight:800;margin-bottom:8px;" id="abort-msg">Partie annulée</div>
+    <div style="color:var(--muted);margin-bottom:20px;">Tu peux rejoindre une autre partie.</div>
+    <button class="btn-join" onclick="location.reload()">↩ Retour à l'accueil</button>
+  </div>
+</div>
+
+<script>
+const socket = io();
+let myName = '';
+let myScore = 0;
+let currentAnswered = false;
+let timerInterval = null;
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+const urlCode = new URLSearchParams(location.search).get('code');
+if (urlCode) document.getElementById('input-code').value = urlCode.toUpperCase();
+
+document.getElementById('input-name').addEventListener('keydown', e => { if (e.key === 'Enter') joinGame(); });
+document.getElementById('input-code').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
+
+function joinGame() {
+  const code = document.getElementById('input-code').value.trim();
+  const name = document.getElementById('input-name').value.trim();
+  document.getElementById('join-err').textContent = '';
+  if (!code) return setErr('Entre le code de la partie');
+  if (!name) return setErr('Entre ton pseudo');
+  socket.emit('player:join', { code, name });
+}
+
+function setErr(msg) { document.getElementById('join-err').textContent = msg; }
+socket.on('join:err', msg => setErr(msg));
+
+socket.on('join:ok', ({ name, quizTitle, questionCount }) => {
+  myName = name;
+  document.getElementById('wait-name').textContent = name;
+  document.getElementById('wait-quiz-title').textContent = quizTitle;
+  document.getElementById('wait-qcount').textContent = `${questionCount} question(s)`;
+  show('screen-waiting');
+});
+
+socket.on('question:start', data => {
+  currentAnswered = false;
+  const img = document.getElementById('q-image');
+  if (data.image) { img.src = data.image; img.classList.remove('hidden'); }
+  else img.classList.add('hidden');
+  document.getElementById('q-prog-label').textContent = `${data.index + 1} / ${data.total}`;
+  document.getElementById('q-text').textContent = data.text;
+  const shapes = ['▲','◆','●','★'], classes = ['c0','c1','c2','c3'];
+  document.getElementById('answers-grid').innerHTML = data.choices.map((c, i) =>
+    `<button class="answer-btn ${classes[i]}" id="ans-${i}" onclick="answer(${i})"><span class="shape">${shapes[i]}</span> ${esc(c)}</button>`
+  ).join('');
+  if (timerInterval) clearInterval(timerInterval);
+  let t = data.timeLimit;
+  updateTimer(t, data.timeLimit);
+  timerInterval = setInterval(() => { t--; updateTimer(t, data.timeLimit); if (t <= 0) clearInterval(timerInterval); }, 1000);
+  show('screen-question');
+});
+
+function updateTimer(t, total) {
+  const el = document.getElementById('q-timer');
+  const prog = document.getElementById('q-progress');
+  if (!el) return;
+  el.textContent = Math.max(0, t);
+  el.className = 'timer-circle' + (t <= 5 ? ' urgent' : '');
+  if (prog) prog.style.width = Math.max(0, t / total * 100) + '%';
+}
+
+function answer(index) {
+  if (currentAnswered) return;
+  currentAnswered = true;
+  socket.emit('player:answer', { index });
+  document.querySelectorAll('.answer-btn').forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === index) btn.classList.add('selected');
+    else btn.classList.add('dimmed');
+  });
+}
+
+socket.on('answer:ok', ({ correct, points }) => {
+  if (timerInterval) clearInterval(timerInterval);
+  myScore += points;
+  document.getElementById('result-icon').textContent = correct ? '✅' : '❌';
+  document.getElementById('result-label').textContent = correct ? 'Bonne réponse !' : 'Mauvaise réponse…';
+  document.getElementById('result-points').textContent = correct ? `+${points.toLocaleString('fr-FR')} pts` : '0 pts';
+  document.getElementById('result-points').style.borderColor = correct ? 'var(--green)' : 'var(--red)';
+  show('screen-result');
+});
+
+socket.on('question:results', data => {
+  if (timerInterval) clearInterval(timerInterval);
+  renderLeaderboard(data.leaderboard, 'lb-list');
+  show('screen-leaderboard');
+});
+
+socket.on('game:end', ({ leaderboard }) => {
+  if (timerInterval) clearInterval(timerInterval);
+  const me = leaderboard.find(p => p.name === myName);
+  const rank = me ? me.rank : '?';
+  const score = me ? me.score : myScore;
+  const trophies = ['🥇','🥈','🥉'];
+  document.getElementById('end-trophy').textContent = trophies[rank-1] || '🎉';
+  document.getElementById('end-rank').textContent = `#${rank}`;
+  document.getElementById('end-score').textContent = `${score.toLocaleString('fr-FR')} points`;
+  document.getElementById('end-name').textContent = myName;
+  renderLeaderboard(leaderboard, 'end-lb-list');
+  show('screen-end');
+});
+
+function renderLeaderboard(leaderboard, listId) {
+  document.getElementById(listId).innerHTML = leaderboard.slice(0, 10).map(p => `
+    <li class="lb-row ${p.name === myName ? 'me' : ''}">
+      <span class="lb-rank">${['🥇','🥈','🥉'][p.rank-1] || '#'+p.rank}</span>
+      <span class="lb-name">${esc(p.name)} ${p.name === myName ? '<span style="font-size:.7rem;color:var(--muted);">(toi)</span>' : ''}</span>
+      <span class="lb-score">${p.score.toLocaleString('fr-FR')} pts</span>
+    </li>
+  `).join('');
+}
+
+socket.on('kicked', () => { document.getElementById('abort-msg').textContent = 'Tu as été expulsé(e)'; show('screen-abort'); });
+socket.on('game:aborted', () => { document.getElementById('abort-msg').textContent = 'La partie a été annulée'; show('screen-abort'); });
+socket.on('error', msg => setErr(msg));
+
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
