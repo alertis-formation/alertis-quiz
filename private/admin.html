@@ -133,6 +133,12 @@
   .toast.ok { border-color: var(--green); color: var(--green); }
   @keyframes slide-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+  /* ── Modal import ───────────────────────────────── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 680px; max-height: 90vh; display: flex; flex-direction: column; gap: 16px; }
+  .modal-box textarea { flex: 1; min-height: 340px; font-family: monospace; font-size: .82rem; line-height: 1.6; resize: vertical; }
+  .import-hint { font-size: .78rem; color: var(--muted); line-height: 1.6; background: var(--card2); border-radius: 8px; padding: 10px 14px; }
+
   .hidden { display: none !important; }
   @media (max-width: 600px) {
     .choices-grid, .choices-display { grid-template-columns: 1fr; }
@@ -156,11 +162,44 @@
 <div class="page active" id="page-quizzes">
 
   <div id="quiz-list-view">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
       <h2 style="font-size:1.4rem;font-weight:800;">Mes Quiz</h2>
-      <button class="btn btn-primary" onclick="newQuiz()">+ Nouveau quiz</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="openImportModal()">📋 Importer du texte</button>
+        <button class="btn btn-primary" onclick="newQuiz()">+ Nouveau quiz</button>
+      </div>
     </div>
     <div id="quiz-list"></div>
+  </div>
+
+  <!-- MODAL IMPORT -->
+  <div class="modal-overlay hidden" id="import-modal">
+    <div class="modal-box">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <h3 style="font-size:1.1rem;font-weight:800;">📋 Importer un quiz depuis du texte</h3>
+        <button class="btn btn-ghost btn-sm" onclick="closeImportModal()">✕</button>
+      </div>
+      <div class="import-hint">
+        Format attendu — une question par bloc :<br>
+        <code>1. Quiz</code> &nbsp;ou&nbsp; <code>1. Vrai ou faux</code><br>
+        <code>Texte de la question</code><br>
+        <code>✅ Bonne réponse</code><br>
+        <code>❌ Mauvaise réponse</code><br>
+        Plusieurs <code>✅</code> = type "Plusieurs bonnes réponses" détecté automatiquement.
+      </div>
+      <div class="field" style="margin:0;">
+        <label>Titre du quiz</label>
+        <input type="text" id="import-title" placeholder="Ex: Formation incendie" maxlength="80" />
+      </div>
+      <div class="field" style="margin:0;flex:1;display:flex;flex-direction:column;">
+        <label>Colle ton texte ici</label>
+        <textarea id="import-textarea" placeholder="1. Quiz&#10;&#10;Quelle est la capitale du Maroc ?&#10;✅ Rabat&#10;❌ Casablanca&#10;❌ Marrakech"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-ghost" onclick="closeImportModal()">Annuler</button>
+        <button class="btn btn-primary" onclick="runImport()">✨ Générer le quiz</button>
+      </div>
+    </div>
   </div>
 
   <div id="editor">
@@ -694,6 +733,105 @@ function toast(msg, type='ok') {
 async function logout() {
   await fetch('/api/logout', { method: 'POST' });
   window.location.href = '/login.html';
+}
+
+// ── Import depuis texte ──────────────────────────────────────
+function openImportModal() {
+  document.getElementById('import-modal').classList.remove('hidden');
+  document.getElementById('import-textarea').focus();
+}
+
+function closeImportModal() {
+  document.getElementById('import-modal').classList.add('hidden');
+}
+
+function parseQuizText(text) {
+  const lines = text.split('\n').map(l => l.trim());
+  const questions = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    // Cherche un en-tête de question : "1. Quiz" ou "2. Vrai ou faux" etc.
+    const header = lines[i].match(/^\d+\.\s*(.+)/);
+    if (!header) { i++; continue; }
+
+    const typeRaw = header[1].toLowerCase();
+    let type = 'qcm';
+    if (typeRaw.includes('vrai')) type = 'vrai_faux';
+    else if (typeRaw.includes('multi')) type = 'multi';
+    i++;
+
+    // Collecter texte de la question + réponses
+    let questionText = '';
+    const choices = [];
+    const correctIndexes = [];
+
+    while (i < lines.length) {
+      const line = lines[i];
+      // Nouvel en-tête = fin du bloc courant
+      if (/^\d+\.\s/.test(line)) break;
+
+      const ok  = line.match(/^✅\s*(.*)/);
+      const bad = line.match(/^❌\s*(.*)/);
+
+      if (ok) {
+        correctIndexes.push(choices.length);
+        choices.push({ text: ok[1].trim(), image: '' });
+      } else if (bad) {
+        choices.push({ text: bad[1].trim(), image: '' });
+      } else if (line.length > 0) {
+        questionText += (questionText ? '\n' : '') + line;
+      }
+      i++;
+    }
+
+    if (!questionText.trim() || choices.length === 0) continue;
+
+    // Affiner le type selon les données réelles
+    if (correctIndexes.length > 1) type = 'multi';
+    if (type === 'vrai_faux' ||
+        (choices.length === 2 &&
+         choices.some(c => c.text.toLowerCase() === 'vrai') &&
+         choices.some(c => c.text.toLowerCase() === 'faux'))) {
+      type = 'vrai_faux';
+    }
+
+    questions.push({
+      text: questionText.trim(),
+      type,
+      choices,
+      correctIndexes: correctIndexes.length ? correctIndexes : [0],
+      timeLimit: 20,
+      image: '',
+      explanation: '',
+    });
+  }
+
+  return questions;
+}
+
+async function runImport() {
+  const title = document.getElementById('import-title').value.trim();
+  const text  = document.getElementById('import-textarea').value;
+
+  if (!title) return toast('Donne un titre au quiz', 'err');
+  if (!text.trim()) return toast('Colle du texte à importer', 'err');
+
+  const questions = parseQuizText(text);
+  if (questions.length === 0) return toast('Aucune question détectée — vérifie le format', 'err');
+
+  const quiz = { title, questions };
+  await fetch('/api/quizzes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(quiz),
+  });
+
+  closeImportModal();
+  document.getElementById('import-title').value = '';
+  document.getElementById('import-textarea').value = '';
+  toast(`${questions.length} question(s) importée(s) ✓`, 'ok');
+  await loadQuizzes();
 }
 
 loadQuizzes();
