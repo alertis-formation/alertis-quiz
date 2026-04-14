@@ -69,6 +69,16 @@
   .answer-btn.c1 { background: linear-gradient(135deg, #3b82f6, #2563eb); }
   .answer-btn.c2 { background: linear-gradient(135deg, #10b981, #059669); }
   .answer-btn.c3 { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .answer-btn.c4 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+  .answer-btn.c5 { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+  .answer-btn.correct-reveal { box-shadow: 0 0 0 4px #fff, 0 0 20px rgba(16,185,129,.8); transform: scale(1.04); filter: brightness(1.2); }
+  .answer-btn.wrong-reveal { filter: brightness(.35) saturate(.3); transform: scale(.96); }
+  .answer-btn img { max-height: 60px; max-width: 100%; border-radius: 8px; object-fit: cover; }
+  .submit-multi-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--green), #059669);
+    color: #fff; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 800; cursor: pointer;
+    transition: transform .15s, filter .15s; margin-top: 8px; display: none; }
+  .submit-multi-btn:active { transform: scale(.97); }
+  .multi-hint { text-align: center; font-size: .8rem; color: var(--muted); margin-top: 4px; }
   .answer-btn:disabled { cursor: default; }
   .answer-btn.selected { box-shadow: 0 0 0 4px rgba(255,255,255,.6); filter: brightness(1.15); }
   .answer-btn.dimmed { filter: brightness(.45) saturate(.5); }
@@ -109,6 +119,72 @@
   .logo-top { text-align: center; font-size: 1.1rem; font-weight: 800; margin-bottom: 20px;
     background: linear-gradient(135deg, var(--purple-light), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
   .hidden { display: none !important; }
+
+  /* ── Transitions entre écrans ───────────────────── */
+  .screen.active { animation: screen-in .38s cubic-bezier(.22,.68,0,1.15) both; }
+  @keyframes screen-in { from { opacity:0; transform: translateY(18px) scale(.98); } to { opacity:1; transform: translateY(0) scale(1); } }
+
+  /* ── Overlay "Question X" ───────────────────────── */
+  .q-intro-overlay {
+    position: fixed; inset: 0; z-index: 300;
+    background: linear-gradient(135deg, #0f0f1a 60%, #1a1a2e);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+    animation: intro-fade-out .45s ease forwards;
+    animation-delay: 1.1s; pointer-events: none;
+  }
+  .q-intro-num {
+    font-size: 1rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .12em;
+    animation: intro-item .5s ease both; animation-delay: .05s;
+  }
+  .q-intro-big {
+    font-size: 5rem; font-weight: 900;
+    background: linear-gradient(135deg, var(--purple-light), var(--blue));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    animation: intro-zoom .6s cubic-bezier(.22,.68,0,1.3) both; animation-delay: .1s;
+  }
+  .q-intro-bar {
+    width: 80px; height: 5px; border-radius: 4px;
+    background: linear-gradient(90deg, var(--purple), var(--blue));
+    animation: intro-bar .7s ease both; animation-delay: .2s;
+  }
+  @keyframes intro-zoom { from{transform:scale(0) rotate(-8deg);opacity:0} 70%{transform:scale(1.1)} to{transform:scale(1);opacity:1} }
+  @keyframes intro-item { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes intro-bar  { from{width:0;opacity:0} to{width:80px;opacity:1} }
+  @keyframes intro-fade-out { to { opacity:0; } }
+
+  /* ── Boutons de réponse — entrée décalée ────────── */
+  @keyframes btn-pop { from{opacity:0;transform:scale(.75) translateY(14px)} to{opacity:1;transform:scale(1) translateY(0)} }
+  .answer-btn { animation: btn-pop .35s cubic-bezier(.22,.68,0,1.2) both; }
+  .answer-btn:nth-child(1) { animation-delay: .08s; }
+  .answer-btn:nth-child(2) { animation-delay: .14s; }
+  .answer-btn:nth-child(3) { animation-delay: .20s; }
+  .answer-btn:nth-child(4) { animation-delay: .26s; }
+  .answer-btn:nth-child(5) { animation-delay: .32s; }
+  .answer-btn:nth-child(6) { animation-delay: .38s; }
+
+  /* ── Révélation bonne/mauvaise réponse ──────────── */
+  .answer-btn.correct-reveal {
+    animation: correct-pop .5s cubic-bezier(.22,.68,0,1.2) forwards !important;
+  }
+  .answer-btn.wrong-reveal {
+    animation: wrong-fade .4s ease forwards !important;
+  }
+  @keyframes correct-pop {
+    0%  { transform: scale(1); }
+    40% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(16,185,129,.6), 0 0 32px rgba(16,185,129,.5); filter: brightness(1.3); }
+    100%{ transform: scale(1.04); box-shadow: 0 0 0 4px #fff, 0 0 20px rgba(16,185,129,.7); filter: brightness(1.2); }
+  }
+  @keyframes wrong-fade { to { filter: brightness(.3) saturate(.2); transform: scale(.95); } }
+
+  /* ── Résultat (bonne/mauvaise) ───────────────────── */
+  .result-icon { animation: result-bounce .5s cubic-bezier(.22,.68,0,1.4) both; }
+  @keyframes result-bounce { from{transform:scale(0) rotate(-15deg);opacity:0} 70%{transform:scale(1.25) rotate(5deg)} to{transform:scale(1) rotate(0);opacity:1} }
+  .points-badge { animation: badge-in .45s cubic-bezier(.22,.68,0,1.3) both; animation-delay: .15s; }
+  @keyframes badge-in { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+
+  /* ── Leaderboard ─────────────────────────────────── */
+  @keyframes lb-slide { from{opacity:0;transform:translateX(-28px)} to{opacity:1;transform:translateX(0)} }
+  .lb-row-anim { animation: lb-slide .4s ease both; }
 </style>
 </head>
 <body>
@@ -153,6 +229,8 @@
   <img class="q-image hidden" id="q-image" src="" alt="" />
   <div class="q-text" id="q-text">Question...</div>
   <div class="answers-grid" id="answers-grid"></div>
+  <div class="multi-hint hidden" id="multi-hint">Sélectionne toutes les bonnes réponses</div>
+  <button class="submit-multi-btn" id="submit-multi-btn" onclick="submitMultiAnswer()">✅ Valider mes réponses</button>
 </div>
 
 <!-- ANSWER SENT -->
@@ -180,6 +258,8 @@
   <ul class="lb-list" id="end-lb-list" style="margin-top:20px;width:100%;"></ul>
 </div>
 
+<!-- OVERLAY INTRO QUESTION (injecté dynamiquement) -->
+
 <!-- ABORT -->
 <div class="screen" id="screen-abort">
   <div style="text-align:center;">
@@ -196,6 +276,8 @@ let myName = '';
 let myScore = 0;
 let currentAnswered = false;
 let timerInterval = null;
+let currentType = 'qcm';
+let selectedIndexes = [];
 
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -230,19 +312,64 @@ socket.on('join:ok', ({ name, quizTitle, questionCount }) => {
 
 socket.on('question:start', data => {
   currentAnswered = false;
+  selectedIndexes = [];
+  currentType = data.type || 'qcm';
+
+  // Overlay d'intro (Question X)
+  const old = document.getElementById('q-intro-overlay');
+  if (old) old.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'q-intro-overlay';
+  overlay.className = 'q-intro-overlay';
+  overlay.innerHTML = `
+    <div class="q-intro-num">Question ${data.index + 1} / ${data.total}</div>
+    <div class="q-intro-big">${data.index + 1}</div>
+    <div class="q-intro-bar"></div>
+  `;
+  document.body.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 1600);
+
   const img = document.getElementById('q-image');
   if (data.image) { img.src = data.image; img.classList.remove('hidden'); }
   else img.classList.add('hidden');
+
   document.getElementById('q-prog-label').textContent = `${data.index + 1} / ${data.total}`;
   document.getElementById('q-text').textContent = data.text;
-  const shapes = ['▲','◆','●','★'], classes = ['c0','c1','c2','c3'];
-  document.getElementById('answers-grid').innerHTML = data.choices.map((c, i) =>
-    `<button class="answer-btn ${classes[i]}" id="ans-${i}" onclick="answer(${i})"><span class="shape">${shapes[i]}</span> ${esc(c)}</button>`
-  ).join('');
+
+  const shapes = ['▲','◆','●','★','✦','◉'];
+  const classes = ['c0','c1','c2','c3','c4','c5'];
+
+  document.getElementById('answers-grid').innerHTML = data.choices.map((c, i) => {
+    const ch = typeof c === 'string' ? { text: c, image: '' } : c;
+    const content = ch.image
+      ? `<img src="${esc(ch.image)}" />`
+      : `<span class="shape">${shapes[i] || (i+1)}</span> ${esc(ch.text)}`;
+    return `<button class="answer-btn ${classes[i] || 'c0'}" id="ans-${i}" onclick="answer(${i})">${content}</button>`;
+  }).join('');
+
+  // Afficher les éléments multi si besoin
+  const hint = document.getElementById('multi-hint');
+  const submitBtn = document.getElementById('submit-multi-btn');
+  if (currentType === 'multi') {
+    hint.classList.remove('hidden');
+    submitBtn.style.display = 'none';
+  } else {
+    hint.classList.add('hidden');
+    submitBtn.style.display = 'none';
+  }
+
   if (timerInterval) clearInterval(timerInterval);
   let t = data.timeLimit;
   updateTimer(t, data.timeLimit);
-  timerInterval = setInterval(() => { t--; updateTimer(t, data.timeLimit); if (t <= 0) clearInterval(timerInterval); }, 1000);
+  timerInterval = setInterval(() => {
+    t--;
+    updateTimer(t, data.timeLimit);
+    if (t <= 0) {
+      clearInterval(timerInterval);
+      // Auto-soumettre pour multi si pas encore validé
+      if (currentType === 'multi' && !currentAnswered && selectedIndexes.length > 0) submitMultiAnswer();
+    }
+  }, 1000);
   show('screen-question');
 });
 
@@ -257,29 +384,72 @@ function updateTimer(t, total) {
 
 function answer(index) {
   if (currentAnswered) return;
+  if (currentType === 'multi') {
+    const btn = document.getElementById(`ans-${index}`);
+    if (selectedIndexes.includes(index)) {
+      selectedIndexes = selectedIndexes.filter(i => i !== index);
+      btn.classList.remove('selected');
+    } else {
+      selectedIndexes.push(index);
+      btn.classList.add('selected');
+    }
+    const submitBtn = document.getElementById('submit-multi-btn');
+    submitBtn.style.display = selectedIndexes.length > 0 ? 'block' : 'none';
+  } else {
+    submitAnswer([index]);
+  }
+}
+
+function submitMultiAnswer() {
+  if (currentAnswered || selectedIndexes.length === 0) return;
+  submitAnswer(selectedIndexes);
+}
+
+function submitAnswer(indexes) {
   currentAnswered = true;
-  socket.emit('player:answer', { index });
+  document.getElementById('submit-multi-btn').style.display = 'none';
+  document.getElementById('multi-hint').classList.add('hidden');
+  socket.emit('player:answer', { indexes });
   document.querySelectorAll('.answer-btn').forEach((btn, i) => {
     btn.disabled = true;
-    if (i === index) btn.classList.add('selected');
-    else btn.classList.add('dimmed');
+    if (!indexes.includes(i)) btn.classList.add('dimmed');
   });
 }
 
 socket.on('answer:ok', ({ correct, points }) => {
   if (timerInterval) clearInterval(timerInterval);
   myScore += points;
+  // Révéler visuellement sur les boutons avant de changer d'écran
+  window._lastAnswerCorrect = correct;
+  window._lastAnswerPoints = points;
+  // Attendre question:results pour la révélation complète des bonnes réponses
+  // Afficher directement l'écran résultat
+  showAnswerResult(correct, points);
+});
+
+function showAnswerResult(correct, points) {
   document.getElementById('result-icon').textContent = correct ? '✅' : '❌';
   document.getElementById('result-label').textContent = correct ? 'Bonne réponse !' : 'Mauvaise réponse…';
   document.getElementById('result-points').textContent = correct ? `+${points.toLocaleString('fr-FR')} pts` : '0 pts';
   document.getElementById('result-points').style.borderColor = correct ? 'var(--green)' : 'var(--red)';
   show('screen-result');
-});
+}
 
 socket.on('question:results', data => {
   if (timerInterval) clearInterval(timerInterval);
-  renderLeaderboard(data.leaderboard, 'lb-list');
-  show('screen-leaderboard');
+  const correctIndexes = data.correctIndexes || (data.correctIndex !== undefined ? [data.correctIndex] : []);
+  // Révéler les bonnes/mauvaises réponses sur les boutons
+  document.querySelectorAll('.answer-btn').forEach((btn, i) => {
+    btn.classList.remove('selected', 'dimmed');
+    if (correctIndexes.includes(i)) btn.classList.add('correct-reveal');
+    else btn.classList.add('wrong-reveal');
+  });
+  // Rester sur l'écran question 1.5s pour voir la révélation, puis leaderboard
+  show('screen-question');
+  setTimeout(() => {
+    renderLeaderboard(data.leaderboard, 'lb-list');
+    show('screen-leaderboard');
+  }, 1500);
 });
 
 socket.on('game:end', ({ leaderboard }) => {
@@ -297,8 +467,9 @@ socket.on('game:end', ({ leaderboard }) => {
 });
 
 function renderLeaderboard(leaderboard, listId) {
-  document.getElementById(listId).innerHTML = leaderboard.slice(0, 10).map(p => `
-    <li class="lb-row ${p.name === myName ? 'me' : ''}">
+  const el = document.getElementById(listId);
+  el.innerHTML = leaderboard.slice(0, 10).map((p, idx) => `
+    <li class="lb-row lb-row-anim ${p.name === myName ? 'me' : ''}" style="animation-delay:${idx * 0.07}s">
       <span class="lb-rank">${['🥇','🥈','🥉'][p.rank-1] || '#'+p.rank}</span>
       <span class="lb-name">${esc(p.name)} ${p.name === myName ? '<span style="font-size:.7rem;color:var(--muted);">(toi)</span>' : ''}</span>
       <span class="lb-score">${p.score.toLocaleString('fr-FR')} pts</span>
