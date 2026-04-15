@@ -3,41 +3,137 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Kahoot Maison</title>
+<title>Alertis Quiz</title>
 <style>
-  body { background:#0f0f1a; color:#f1f5f9; font-family:'Segoe UI',system-ui,sans-serif;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:20px; text-align:center; }
-  .logo { font-size:3rem; font-weight:900; background:linear-gradient(135deg,#a855f7,#3b82f6);
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
-  .subtitle { color:#94a3b8; margin-bottom:40px; }
-  .cards { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; }
-  .card { background:#1a1a2e; border:1px solid #2d3748; border-radius:16px; padding:32px 28px; width:220px; transition:border-color .2s, transform .2s; }
-  .card:hover { border-color:#7c3aed; transform:translateY(-4px); }
-  .card .icon { font-size:2.5rem; margin-bottom:12px; }
-  .card h2 { font-size:1.1rem; margin-bottom:8px; }
-  .card p { color:#94a3b8; font-size:.85rem; margin-bottom:16px; }
-  .btn { display:block; padding:12px; border-radius:10px; font-weight:700; text-decoration:none; transition:filter .2s; }
-  .btn-admin { background:#7c3aed; color:#fff; }
-  .btn-player { background:#10b981; color:#fff; }
-  .btn:hover { filter:brightness(1.15); }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0a14;
+    color: #f1f5f9;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px;
+    text-align: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── Fond animé ─────────────────────────────────── */
+  .bg-orbs {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    overflow: hidden;
+  }
+  .orb {
+    position: absolute; border-radius: 50%; filter: blur(80px); opacity: .18;
+    animation: orb-float 12s ease-in-out infinite;
+  }
+  .orb1 { width: 500px; height: 500px; background: #7c3aed; top: -100px; left: -100px; animation-delay: 0s; }
+  .orb2 { width: 400px; height: 400px; background: #3b82f6; bottom: -80px; right: -80px; animation-delay: -4s; }
+  .orb3 { width: 300px; height: 300px; background: #10b981; top: 50%; left: 50%; transform: translate(-50%,-50%); animation-delay: -8s; }
+  @keyframes orb-float {
+    0%,100% { transform: translateY(0) scale(1); }
+    50%      { transform: translateY(-30px) scale(1.05); }
+  }
+  .orb3 { animation: orb-float3 10s ease-in-out infinite; }
+  @keyframes orb-float3 {
+    0%,100% { transform: translate(-50%,-50%) scale(1); }
+    50%      { transform: translate(-50%,-60%) scale(1.1); }
+  }
+
+  /* ── Contenu ────────────────────────────────────── */
+  .content { position: relative; z-index: 1; max-width: 560px; width: 100%; }
+
+  .logo-wrap { margin-bottom: 12px; animation: logo-in .7s cubic-bezier(.22,.68,0,1.2) both; }
+  .logo-icon { font-size: 3.5rem; display: block; margin-bottom: 8px; filter: drop-shadow(0 0 20px rgba(168,85,247,.5)); }
+  .logo-text {
+    font-size: 2.8rem; font-weight: 900; letter-spacing: -.02em;
+    background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #3b82f6 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    line-height: 1;
+  }
+  @keyframes logo-in { from{opacity:0;transform:scale(.8) translateY(-20px)} to{opacity:1;transform:scale(1) translateY(0)} }
+
+  .tagline {
+    color: #64748b; font-size: .95rem; font-weight: 500;
+    margin-bottom: 48px;
+    animation: fade-up .6s ease both; animation-delay: .15s;
+  }
+
+  .cards {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    animation: fade-up .6s ease both; animation-delay: .25s;
+  }
+  @media (max-width: 480px) { .cards { grid-template-columns: 1fr; } .logo-text { font-size: 2rem; } }
+
+  .card {
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 20px; padding: 28px 20px;
+    text-decoration: none; color: inherit;
+    transition: transform .25s, border-color .25s, box-shadow .25s;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: ''; position: absolute; inset: 0; border-radius: 20px;
+    opacity: 0; transition: opacity .3s;
+  }
+  .card-admin::before { background: radial-gradient(circle at 50% 0%, rgba(124,58,237,.15), transparent 70%); }
+  .card-player::before { background: radial-gradient(circle at 50% 0%, rgba(16,185,129,.15), transparent 70%); }
+  .card:hover { transform: translateY(-6px); }
+  .card-admin:hover { border-color: rgba(124,58,237,.5); box-shadow: 0 20px 40px rgba(124,58,237,.15); }
+  .card-player:hover { border-color: rgba(16,185,129,.5); box-shadow: 0 20px 40px rgba(16,185,129,.15); }
+  .card:hover::before { opacity: 1; }
+
+  .card-icon { font-size: 2.2rem; }
+  .card-title { font-size: 1.1rem; font-weight: 800; }
+  .card-desc { color: #64748b; font-size: .82rem; line-height: 1.5; }
+  .card-btn {
+    margin-top: 4px; padding: 10px 24px; border-radius: 10px;
+    font-size: .88rem; font-weight: 700; border: none; cursor: pointer;
+    transition: filter .2s; width: 100%;
+  }
+  .btn-admin  { background: linear-gradient(135deg, #7c3aed, #6366f1); color: #fff; }
+  .btn-player { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+  .card-btn:hover { filter: brightness(1.15); }
+
+  @keyframes fade-up { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+  .footer { position: relative; z-index: 1; margin-top: 32px; color: #334155; font-size: .75rem; animation: fade-up .6s ease both; animation-delay: .4s; }
 </style>
 </head>
 <body>
-  <div class="logo">🎮 Kahoot Maison</div>
-  <div class="subtitle">Quiz multijoueur en temps réel — 100% gratuit &amp; auto-hébergé</div>
-  <div class="cards">
-    <div class="card">
-      <div class="icon">🛠</div>
-      <h2>Organisateur</h2>
-      <p>Crée des quiz et lance les parties</p>
-      <a href="/admin.html" class="btn btn-admin">Tableau de bord</a>
+  <div class="bg-orbs">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+  </div>
+
+  <div class="content">
+    <div class="logo-wrap">
+      <span class="logo-icon">⚡</span>
+      <div class="logo-text">Alertis Quiz</div>
     </div>
-    <div class="card">
-      <div class="icon">🎮</div>
-      <h2>Joueur</h2>
-      <p>Rejoins une partie avec un code</p>
-      <a href="/play.html" class="btn btn-player">Rejoindre</a>
+    <div class="tagline">Quiz interactif en temps réel pour vos formations</div>
+
+    <div class="cards">
+      <a href="/admin.html" class="card card-admin">
+        <div class="card-icon">🛠️</div>
+        <div class="card-title">Organisateur</div>
+        <div class="card-desc">Crée tes quiz et lance les parties</div>
+        <button class="card-btn btn-admin">Tableau de bord</button>
+      </a>
+      <a href="/play.html" class="card card-player">
+        <div class="card-icon">🎯</div>
+        <div class="card-title">Participant</div>
+        <div class="card-desc">Rejoins une partie avec un code</div>
+        <button class="card-btn btn-player">Rejoindre</button>
+      </a>
     </div>
   </div>
+
+  <div class="footer">Alertis Formation · Quiz interactif</div>
 </body>
 </html>
