@@ -3,57 +3,90 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Kahoot Maison — Connexion Admin</title>
+<title>Alertis Quiz — Connexion</title>
 <style>
   :root {
-    --bg: #0f0f1a; --card: #1a1a2e; --purple: #7c3aed; --purple-light: #a855f7;
-    --text: #f1f5f9; --muted: #94a3b8; --border: #2d3748; --red: #ef4444; --green: #10b981;
+    --bg: #0a0a14; --card: #12121f; --purple: #7c3aed; --purple-light: #a855f7;
+    --text: #f1f5f9; --muted: #64748b; --border: rgba(255,255,255,.08); --red: #ef4444;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif;
-    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 20px; overflow: hidden; position: relative;
+  }
 
-  .container { width: 100%; max-width: 400px; }
+  .bg-orbs { position: fixed; inset: 0; pointer-events: none; }
+  .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .12; }
+  .orb1 { width: 400px; height: 400px; background: #7c3aed; top: -100px; left: -100px; }
+  .orb2 { width: 300px; height: 300px; background: #3b82f6; bottom: -80px; right: -80px; }
 
-  .logo { text-align: center; font-size: 2rem; font-weight: 900; margin-bottom: 8px;
-    background: linear-gradient(135deg, var(--purple-light), #3b82f6);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .subtitle { text-align: center; color: var(--muted); font-size: .9rem; margin-bottom: 32px; }
+  .container { width: 100%; max-width: 400px; position: relative; z-index: 1; animation: card-in .5s cubic-bezier(.22,.68,0,1.2) both; }
+  @keyframes card-in { from{opacity:0;transform:translateY(24px) scale(.97)} to{opacity:1;transform:none} }
 
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; }
-  .card h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 24px; text-align: center; }
+  .logo-wrap { text-align: center; margin-bottom: 28px; }
+  .logo-icon { font-size: 2.5rem; display: block; margin-bottom: 6px; }
+  .logo-text {
+    font-size: 1.8rem; font-weight: 900;
+    background: linear-gradient(135deg, #a855f7, #6366f1, #3b82f6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .logo-sub { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+
+  .card {
+    background: rgba(255,255,255,.03); border: 1px solid var(--border);
+    border-radius: 20px; padding: 32px;
+    box-shadow: 0 25px 50px rgba(0,0,0,.4);
+  }
+  .card h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 24px; text-align: center; }
 
   .field { margin-bottom: 18px; }
-  label { display: block; font-size: .8rem; font-weight: 700; color: var(--muted);
-    text-transform: uppercase; letter-spacing: .06em; margin-bottom: 7px; }
-  input { background: #0f0f1a; border: 2px solid var(--border); border-radius: 10px;
-    color: var(--text); padding: 13px 16px; font-size: 1rem; width: 100%;
-    transition: border-color .2s; font-family: inherit; }
-  input:focus { outline: none; border-color: var(--purple-light); }
+  label {
+    display: block; font-size: .78rem; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px;
+  }
+  input {
+    background: rgba(255,255,255,.04); border: 1.5px solid var(--border);
+    border-radius: 10px; color: var(--text); padding: 13px 16px;
+    font-size: .95rem; width: 100%; transition: border-color .2s; font-family: inherit;
+  }
+  input:focus { outline: none; border-color: var(--purple-light); background: rgba(124,58,237,.06); }
 
-  .btn { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--purple), #6366f1);
-    color: #fff; border: none; border-radius: 10px; font-size: 1rem; font-weight: 800;
-    cursor: pointer; transition: filter .2s; margin-top: 4px; }
-  .btn:hover { filter: brightness(1.1); }
-  .btn:active { filter: brightness(.9); }
-  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, #7c3aed, #6366f1);
+    color: #fff; border: none; border-radius: 10px;
+    font-size: 1rem; font-weight: 800; cursor: pointer;
+    transition: filter .2s, transform .15s; margin-top: 4px;
+    box-shadow: 0 8px 20px rgba(124,58,237,.3);
+  }
+  .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); filter: brightness(.95); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
-  .err { color: var(--red); font-size: .85rem; text-align: center; margin-top: 14px;
-    font-weight: 600; min-height: 20px; }
+  .err { color: var(--red); font-size: .85rem; text-align: center; margin-top: 14px; font-weight: 600; min-height: 20px; }
 
   .back { text-align: center; margin-top: 20px; }
-  .back a { color: var(--muted); font-size: .85rem; text-decoration: none; }
+  .back a { color: var(--muted); font-size: .85rem; text-decoration: none; transition: color .2s; }
   .back a:hover { color: var(--text); }
 </style>
 </head>
 <body>
+<div class="bg-orbs">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+</div>
+
 <div class="container">
-  <div class="logo">🎮 Kahoot Maison</div>
-  <div class="subtitle">Accès organisateur</div>
+  <div class="logo-wrap">
+    <span class="logo-icon">⚡</span>
+    <div class="logo-text">Alertis Quiz</div>
+    <div class="logo-sub">Espace organisateur</div>
+  </div>
 
   <div class="card">
     <h2>🔐 Connexion</h2>
-
     <div class="field">
       <label>Email</label>
       <input type="email" id="email" placeholder="admin@example.com" autocomplete="email" />
@@ -62,7 +95,6 @@
       <label>Mot de passe</label>
       <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
     </div>
-
     <div class="err" id="err-msg"></div>
     <button class="btn" id="btn-login" onclick="login()">Se connecter</button>
   </div>
@@ -71,42 +103,25 @@
 </div>
 
 <script>
-document.getElementById('password').addEventListener('keydown', e => {
-  if (e.key === 'Enter') login();
-});
+document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 
 async function login() {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
   const btn = document.getElementById('btn-login');
   const err = document.getElementById('err-msg');
-
   err.textContent = '';
   if (!email || !password) { err.textContent = 'Remplis tous les champs'; return; }
-
-  btn.disabled = true;
-  btn.textContent = 'Connexion…';
-
+  btn.disabled = true; btn.textContent = 'Connexion…';
   try {
     const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
-
-    if (res.ok) {
-      window.location.href = '/admin.html';
-    } else {
-      err.textContent = data.error || 'Erreur de connexion';
-      btn.disabled = false;
-      btn.textContent = 'Se connecter';
-    }
-  } catch (e) {
-    err.textContent = 'Erreur réseau';
-    btn.disabled = false;
-    btn.textContent = 'Se connecter';
-  }
+    if (res.ok) { window.location.href = '/admin.html'; }
+    else { err.textContent = data.error || 'Erreur de connexion'; btn.disabled = false; btn.textContent = 'Se connecter'; }
+  } catch (e) { err.textContent = 'Erreur réseau'; btn.disabled = false; btn.textContent = 'Se connecter'; }
 }
 </script>
 </body>
