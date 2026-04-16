@@ -2,9 +2,9 @@
 .floaters { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
 .fl {
   position: absolute;
-  opacity: .18;
+  opacity: .45;
   animation: fl-float linear infinite;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,.2));
+  filter: drop-shadow(0 3px 10px rgba(0,0,0,.3));
   user-select: none;
   line-height: 1;
 }
