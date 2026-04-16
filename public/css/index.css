@@ -24,6 +24,23 @@ body {
 .orb3 { animation: orb-float3 11s ease-in-out infinite; }
 @keyframes orb-float3 { 0%,100%{transform:translate(-50%,-50%) scale(1)} 50%{transform:translate(-50%,-60%) scale(1.08)} }
 
+/* ── Icônes flottantes ───────────────────────────── */
+.floaters { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+.fl {
+  position: absolute;
+  opacity: .18;
+  animation: fl-float linear infinite;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.2));
+  user-select: none;
+}
+@keyframes fl-float {
+  0%   { transform: translateY(0)   rotate(0deg)   scale(1); }
+  25%  { transform: translateY(-18px) rotate(6deg)  scale(1.06); }
+  50%  { transform: translateY(-8px)  rotate(-4deg) scale(.97); }
+  75%  { transform: translateY(-22px) rotate(3deg)  scale(1.04); }
+  100% { transform: translateY(0)   rotate(0deg)   scale(1); }
+}
+
 /* ── Contenu ────────────────────────────────────── */
 .content { position: relative; z-index: 1; max-width: 560px; width: 100%; }
 
