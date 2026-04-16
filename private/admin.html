@@ -179,7 +179,7 @@
   <div id="panel-end">
     <div class="card" style="text-align:center;padding:40px 20px;">
       <div style="font-size:3rem;margin-bottom:12px;">🏆</div>
-      <h2 style="font-size:1.8rem;font-weight:800;margin-bottom:24px;">Partie terminée !</h2>
+      <h2 style="font-size:1.8rem;font-weight:800;margin-bottom:24px;background:linear-gradient(135deg,#F97316,#6AA5E8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Partie terminée !</h2>
       <ul class="leaderboard" id="end-leaderboard" style="max-width:400px;margin:0 auto 24px;"></ul>
       <button class="btn btn-primary" onclick="resetGame()">🔄 Nouvelle partie</button>
     </div>
@@ -715,13 +715,35 @@ async function runImport() {
   await loadQuizzes();
 }
 
-// ── Moteur Audio (admin) ─────────────────────────────────────
+// ── Moteur Audio (admin) — 3 pistes qui alternent ────────────
 const Audio = (() => {
   let ctx, mGain, sGain;
   let musicOn = true, sfxOn = true;
   let loopRunning = false, loopTimer = null;
   let beatCount = 0, nextBeatTime = 0;
-  const BPM = 126;
+  let trackIdx = 0;
+
+  // ── 3 pistes différentes ─────────────────────────────────────
+  const TRACKS = [
+    { // Piste 1 : Electro (BPM 126) — ambiance quiz classique
+      bpm: 126,
+      kick:  [0, 8],
+      snare: [4, 12],
+      bass:  [98,0,0,0,110,0,0,0,98,0,0,116,110,0,0,0],
+    },
+    { // Piste 2 : Groove funky (BPM 106) — plus décontracté
+      bpm: 106,
+      kick:  [0, 3, 8, 11],
+      snare: [4, 12],
+      bass:  [87,0,0,87,0,0,98,0,87,0,0,0,98,0,87,0],
+    },
+    { // Piste 3 : Techno rapide (BPM 138) — ambiance finale intense
+      bpm: 138,
+      kick:  [0, 4, 8, 12],
+      snare: [4, 12],
+      bass:  [110,0,110,0,0,0,123,0,110,0,0,0,116,0,0,0],
+    },
+  ];
 
   function init() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
@@ -762,19 +784,18 @@ const Audio = (() => {
   function hihat(t,acc) { noise(t,acc?.06:.03,acc?.18:.08,'highpass',7500,mGain); }
   function bass(t,freq,dur) { osc(freq,'triangle',t,dur,.45,mGain); }
 
-  const BASS=[98,0,0,0,110,0,0,0,98,0,0,116,110,0,0,0];
-
-  function scheduleBeat(t,step) {
-    const s=(60/BPM)/4;
-    if(step===0||step===8) kick(t);
-    if(step===4||step===12) snare(t);
-    if(step%2===0) hihat(t,step%4===0);
-    if(BASS[step]) bass(t,BASS[step],s*1.7);
+  function scheduleBeat(t, step) {
+    const track = TRACKS[trackIdx];
+    const s = (60/track.bpm)/4;
+    if (track.kick.includes(step))  kick(t);
+    if (track.snare.includes(step)) snare(t);
+    if (step%2===0) hihat(t, step%4===0);
+    if (track.bass[step]) bass(t, track.bass[step], s*1.7);
   }
 
   function scheduleLoop() {
     if (!loopRunning) return;
-    const s16=(60/BPM)/4;
+    const s16 = (60/TRACKS[trackIdx].bpm)/4;
     while (nextBeatTime < ctx.currentTime+0.25) {
       scheduleBeat(nextBeatTime, beatCount%16);
       nextBeatTime+=s16; beatCount++;
@@ -784,6 +805,7 @@ const Audio = (() => {
 
   function startMusic() {
     if (!musicOn||loopRunning) return;
+    trackIdx = (trackIdx + 1) % TRACKS.length; // piste suivante à chaque partie
     init(); loopRunning=true; beatCount=0;
     nextBeatTime=ctx.currentTime+0.1; scheduleLoop();
   }
