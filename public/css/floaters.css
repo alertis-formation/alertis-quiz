@@ -9,7 +9,16 @@ h1, h2, h3,
 .result-label,
 .final-rank,
 .logo-text,
-.logo {
+.logo,
+.section-title,
+.join-url,
+.stat-pill,
+.player-chip,
+.quiz-name,
+.quiz-meta,
+.q-num,
+.lb-name,
+.lb-score {
   background: linear-gradient(135deg, #F97316 0%, #6AA5E8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
