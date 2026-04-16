@@ -13,7 +13,7 @@ body {
 .orb1 { width: 400px; height: 400px; background: #F97316; top: -120px; left: -120px; }
 .orb2 { width: 320px; height: 320px; background: #6AA5E8; bottom: -80px; right: -80px; }
 
-.container { width: 100%; max-width: 400px; position: relative; z-index: 1; animation: card-in .5s cubic-bezier(.22,.68,0,1.2) both; }
+.container { width: 100%; max-width: 400px; position: relative; z-index: 2; animation: card-in .5s cubic-bezier(.22,.68,0,1.2) both; }
 @keyframes card-in { from{opacity:0;transform:translateY(24px) scale(.97)} to{opacity:1;transform:none} }
 
 .logo-wrap { text-align: center; margin-bottom: 28px; }
