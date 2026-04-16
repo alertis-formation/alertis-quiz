@@ -5,72 +5,68 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Alertis Quiz — Connexion</title>
 <style>
-  :root {
-    --bg: #F9FAFB; --card: #1a1a10; --orange: #F97316; --orange-light: #fb923c;
-    --text: #f1f5f9; --muted: #94a3b8; --border: rgba(255,255,255,.1); --red: #ef4444;
-  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    background: linear-gradient(160deg, var(--bg) 0%, #E5E7EB 100%);
-    color: var(--text);
+    background: #F5F9FF;
+    color: #1F2937;
     font-family: 'Segoe UI', system-ui, sans-serif;
     min-height: 100vh; display: flex; align-items: center; justify-content: center;
     padding: 20px; overflow: hidden; position: relative;
   }
 
   .bg-orbs { position: fixed; inset: 0; pointer-events: none; }
-  .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .12; }
-  .orb1 { width: 400px; height: 400px; background: #F97316; top: -100px; left: -100px; }
-  .orb2 { width: 300px; height: 300px; background: #8B5CF6; bottom: -80px; right: -80px; }
+  .orb { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .15; }
+  .orb1 { width: 400px; height: 400px; background: #F97316; top: -120px; left: -120px; }
+  .orb2 { width: 320px; height: 320px; background: #6AA5E8; bottom: -80px; right: -80px; }
 
   .container { width: 100%; max-width: 400px; position: relative; z-index: 1; animation: card-in .5s cubic-bezier(.22,.68,0,1.2) both; }
   @keyframes card-in { from{opacity:0;transform:translateY(24px) scale(.97)} to{opacity:1;transform:none} }
 
   .logo-wrap { text-align: center; margin-bottom: 28px; }
-  .logo-icon { font-size: 2.5rem; display: block; margin-bottom: 6px; }
+  .logo-icon { font-size: 2.5rem; display: block; margin-bottom: 6px; filter: drop-shadow(0 4px 12px rgba(249,115,22,.3)); }
   .logo-text {
     font-size: 1.8rem; font-weight: 900;
-    background: linear-gradient(135deg, #F97316, #4F8EF7, #8B5CF6);
+    background: linear-gradient(135deg, #F97316, #6AA5E8, #2A4E7A);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   }
-  .logo-sub { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+  .logo-sub { color: #6B7280; font-size: .85rem; margin-top: 4px; }
 
   .card {
-    background: var(--card); border: 1px solid var(--border);
+    background: #fff; border: 1.5px solid #ddeaff;
     border-radius: 20px; padding: 32px;
-    box-shadow: 0 25px 50px rgba(0,0,0,.5);
+    box-shadow: 0 12px 40px rgba(42,78,122,.12);
   }
-  .card h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 24px; text-align: center; }
+  .card h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 24px; text-align: center; color: #2A4E7A; }
 
   .field { margin-bottom: 18px; }
   label {
-    display: block; font-size: .78rem; font-weight: 700; color: var(--muted);
+    display: block; font-size: .78rem; font-weight: 700; color: #6B7280;
     text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px;
   }
   input {
-    background: rgba(255,255,255,.07); border: 1.5px solid var(--border);
-    border-radius: 10px; color: var(--text); padding: 13px 16px;
-    font-size: .95rem; width: 100%; transition: border-color .2s; font-family: inherit;
+    background: #F5F9FF; border: 1.5px solid #ddeaff;
+    border-radius: 10px; color: #1F2937; padding: 13px 16px;
+    font-size: .95rem; width: 100%; transition: border-color .2s, box-shadow .2s; font-family: inherit;
   }
-  input:focus { outline: none; border-color: var(--orange-light); background: rgba(249,115,22,.06); }
+  input:focus { outline: none; border-color: #6AA5E8; box-shadow: 0 0 0 3px rgba(106,165,232,.18); }
 
   .btn {
     width: 100%; padding: 14px;
-    background: linear-gradient(135deg, #F97316, #ea6a0a);
+    background: #F97316;
     color: #fff; border: none; border-radius: 10px;
     font-size: 1rem; font-weight: 800; cursor: pointer;
-    transition: filter .2s, transform .15s; margin-top: 4px;
-    box-shadow: 0 8px 20px rgba(249,115,22,.35);
+    transition: all .2s; margin-top: 4px;
+    box-shadow: 0 6px 18px rgba(249,115,22,.35);
   }
-  .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
-  .btn:active { transform: translateY(0); filter: brightness(.95); }
+  .btn:hover { background: #EA580C; transform: translateY(-1px); box-shadow: 0 10px 24px rgba(249,115,22,.45); }
+  .btn:active { transform: translateY(0); }
   .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
-  .err { color: var(--red); font-size: .85rem; text-align: center; margin-top: 14px; font-weight: 600; min-height: 20px; }
+  .err { color: #ef4444; font-size: .85rem; text-align: center; margin-top: 14px; font-weight: 600; min-height: 20px; }
 
   .back { text-align: center; margin-top: 20px; }
-  .back a { color: var(--muted); font-size: .85rem; text-decoration: none; transition: color .2s; }
-  .back a:hover { color: var(--text); }
+  .back a { color: #6B7280; font-size: .85rem; text-decoration: none; transition: color .2s; }
+  .back a:hover { color: #2A4E7A; }
 </style>
 </head>
 <body>
