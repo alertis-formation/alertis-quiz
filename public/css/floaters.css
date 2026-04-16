@@ -1,0 +1,17 @@
+/* ── Icônes flottantes (partagé sur toutes les pages) ── */
+.floaters { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.fl {
+  position: absolute;
+  opacity: .18;
+  animation: fl-float linear infinite;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.2));
+  user-select: none;
+  line-height: 1;
+}
+@keyframes fl-float {
+  0%   { transform: translateY(0)    rotate(0deg)  scale(1);    }
+  25%  { transform: translateY(-18px) rotate(6deg)  scale(1.06); }
+  50%  { transform: translateY(-8px)  rotate(-4deg) scale(.97);  }
+  75%  { transform: translateY(-22px) rotate(3deg)  scale(1.04); }
+  100% { transform: translateY(0)    rotate(0deg)  scale(1);    }
+}
