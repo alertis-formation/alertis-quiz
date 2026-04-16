@@ -9,9 +9,11 @@
   :root {
     --bg: #F9FAFB;
     --bg2: #E5E7EB;
-    --card: #1a1a10;
+    --card: #1F2937;
     --orange: #F97316;
-    --green: #10b981; --red: #ef4444; --yellow: #f59e0b; --blue: #3b82f6;
+    --blue: #4F8EF7;
+    --violet: #8B5CF6;
+    --green: #10b981; --red: #ef4444; --yellow: #f59e0b;
     --text: #f1f5f9;
     --muted: rgba(255,255,255,.6);
     --border: rgba(255,255,255,.12);
@@ -20,6 +22,7 @@
   html, body { height: 100%; }
   body {
     background: linear-gradient(160deg, #F9FAFB 0%, #E5E7EB 100%);
+    background-attachment: fixed;
     background-attachment: fixed;
     color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif;
     display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 16px;
@@ -43,31 +46,31 @@
     color: var(--text); padding: 14px 16px; font-size: 1.1rem; font-weight: 700; width: 100%;
     transition: border-color .2s, box-shadow .2s; letter-spacing: .05em; font-family: inherit;
   }
-  input[type="text"]:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(249,115,22,.2); }
+  input[type="text"]:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(79,142,247,.2); }
 
   .btn-join {
     width: 100%; padding: 16px;
-    background: linear-gradient(135deg, #F97316, #ea6a0a); color: #fff;
+    background: linear-gradient(135deg, #F97316, #4F8EF7); color: #fff;
     border: none; border-radius: 14px; font-size: 1.15rem; font-weight: 900; cursor: pointer;
     transition: transform .15s, filter .15s, box-shadow .2s; margin-top: 8px;
-    box-shadow: 0 8px 24px rgba(249,115,22,.45);
+    box-shadow: 0 8px 24px rgba(249,115,22,.35);
     letter-spacing: .02em;
   }
   .btn-join:active { transform: scale(.97); }
-  .btn-join:hover { filter: brightness(1.08); box-shadow: 0 12px 32px rgba(249,115,22,.55); }
+  .btn-join:hover { filter: brightness(1.08); box-shadow: 0 12px 32px rgba(79,142,247,.45); }
   .btn-join:disabled { opacity: .4; cursor: not-allowed; }
 
   #screen-waiting { align-items: center; text-align: center; }
   .pulse-ring {
     width: 110px; height: 110px; border-radius: 50%;
-    background: rgba(249,115,22,.15); border: 3px solid rgba(249,115,22,.7);
+    background: rgba(79,142,247,.15); border: 3px solid rgba(79,142,247,.7);
     display: flex; align-items: center; justify-content: center; font-size: 2.8rem;
     animation: pulse 2s ease-in-out infinite; margin: 0 auto 20px;
   }
   @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.08);opacity:.75} }
   .player-name-badge {
     display: inline-block;
-    background: rgba(249,115,22,.2); border: 2px solid rgba(249,115,22,.5);
+    background: rgba(79,142,247,.2); border: 2px solid rgba(79,142,247,.5);
     border-radius: 24px; padding: 8px 24px; font-weight: 800; font-size: 1.15rem; margin-bottom: 8px;
   }
 
@@ -75,10 +78,10 @@
   .q-header { display: flex; align-items: center; justify-content: space-between; }
   .q-progress-label { font-size: 0.85rem; color: rgba(255,255,255,.8); font-weight: 700; background: rgba(255,255,255,.12); border-radius: 20px; padding: 4px 12px; }
   .progress-wrap { height: 7px; background: rgba(255,255,255,.15); border-radius: 4px; overflow: hidden; }
-  .progress-fill { height: 100%; background: linear-gradient(90deg, #F97316, #fbbf24); border-radius: 4px; transition: width 1s linear; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #F97316, #4F8EF7, #8B5CF6); border-radius: 4px; transition: width 1s linear; }
   .timer-circle {
     width: 62px; height: 62px; border-radius: 50%;
-    background: rgba(249,115,22,.2); border: 3px solid rgba(249,115,22,.7);
+    background: rgba(139,92,246,.2); border: 3px solid rgba(139,92,246,.7);
     display: flex; align-items: center; justify-content: center;
     font-size: 1.5rem; font-weight: 900; color: #fff; transition: all .3s;
   }
@@ -129,7 +132,7 @@
   .result-label { font-size: 2.2rem; font-weight: 900; margin-bottom: 8px; }
   .points-badge {
     display: inline-block;
-    background: rgba(249,115,22,.25); border: 2px solid rgba(249,115,22,.6);
+    background: rgba(249,115,22,.2); border: 2px solid rgba(249,115,22,.5);
     border-radius: 24px; padding: 10px 28px; font-size: 1.4rem; font-weight: 900; color: #F97316; margin-bottom: 12px;
   }
   .waiting-next { color: rgba(255,255,255,.65); font-size: .9rem; margin-top: 12px; }
@@ -150,7 +153,7 @@
   .lb-rank { width: 28px; text-align: center; font-size: 1.2rem; }
   .lb-name { flex: 1; font-weight: 700; }
   .lb-score { font-weight: 800; color: #F97316; }
-  .lb-row:first-child { background: rgba(249,115,22,.3); border-color: rgba(249,115,22,.6); }
+  .lb-row:first-child { background: rgba(249,115,22,.25); border-color: rgba(249,115,22,.55); }
   .lb-row:nth-child(2) { background: rgba(255,255,255,.15); }
   .lb-row:nth-child(3) { background: rgba(180,83,9,.2); }
 
@@ -158,7 +161,7 @@
   .final-trophy { font-size: 5rem; animation: trophy-bounce 1s ease; }
   @keyframes trophy-bounce { 0%{transform:translateY(-40px);opacity:0} 60%{transform:translateY(8px)} 100%{transform:translateY(0);opacity:1} }
   .final-rank { font-size: 3.5rem; font-weight: 900; margin: 12px 0; }
-  .final-score { color: #F97316; font-size: 1.4rem; font-weight: 800; }
+  .final-score { color: #4F8EF7; font-size: 1.4rem; font-weight: 800; }
 
   #screen-abort { text-align: center; }
   .err-msg { color: #fca5a5; font-size: 0.85rem; text-align: center; margin-top: 8px; font-weight: 600; min-height: 20px; }
@@ -186,13 +189,13 @@
   }
   .q-intro-big {
     font-size: 5rem; font-weight: 900;
-    background: linear-gradient(135deg, #F97316, #fbbf24);
+    background: linear-gradient(135deg, #F97316, #4F8EF7, #8B5CF6);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     animation: intro-zoom .6s cubic-bezier(.22,.68,0,1.3) both; animation-delay: .1s;
   }
   .q-intro-bar {
     width: 80px; height: 5px; border-radius: 4px;
-    background: linear-gradient(90deg, #F97316, #fbbf24);
+    background: linear-gradient(90deg, #F97316, #4F8EF7, #8B5CF6);
     animation: intro-bar .7s ease both; animation-delay: .2s;
   }
   @keyframes intro-zoom { from{transform:scale(0) rotate(-8deg);opacity:0} 70%{transform:scale(1.1)} to{transform:scale(1);opacity:1} }
