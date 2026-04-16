@@ -6,12 +6,13 @@
 <title>Alertis Quiz — Connexion</title>
 <style>
   :root {
-    --bg: #0a0a14; --card: #12121f; --purple: #7c3aed; --purple-light: #a855f7;
-    --text: #f1f5f9; --muted: #64748b; --border: rgba(255,255,255,.08); --red: #ef4444;
+    --bg: #455c16; --card: #1a1a10; --orange: #F97316; --orange-light: #fb923c;
+    --text: #f1f5f9; --muted: #94a3b8; --border: rgba(255,255,255,.1); --red: #ef4444;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    background: var(--bg); color: var(--text);
+    background: linear-gradient(160deg, var(--bg) 0%, #2a3a0c 100%);
+    color: var(--text);
     font-family: 'Segoe UI', system-ui, sans-serif;
     min-height: 100vh; display: flex; align-items: center; justify-content: center;
     padding: 20px; overflow: hidden; position: relative;
@@ -19,8 +20,8 @@
 
   .bg-orbs { position: fixed; inset: 0; pointer-events: none; }
   .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .12; }
-  .orb1 { width: 400px; height: 400px; background: #7c3aed; top: -100px; left: -100px; }
-  .orb2 { width: 300px; height: 300px; background: #3b82f6; bottom: -80px; right: -80px; }
+  .orb1 { width: 400px; height: 400px; background: #F97316; top: -100px; left: -100px; }
+  .orb2 { width: 300px; height: 300px; background: #84cc16; bottom: -80px; right: -80px; }
 
   .container { width: 100%; max-width: 400px; position: relative; z-index: 1; animation: card-in .5s cubic-bezier(.22,.68,0,1.2) both; }
   @keyframes card-in { from{opacity:0;transform:translateY(24px) scale(.97)} to{opacity:1;transform:none} }
@@ -29,15 +30,15 @@
   .logo-icon { font-size: 2.5rem; display: block; margin-bottom: 6px; }
   .logo-text {
     font-size: 1.8rem; font-weight: 900;
-    background: linear-gradient(135deg, #a855f7, #6366f1, #3b82f6);
+    background: linear-gradient(135deg, #F97316, #f59e0b, #84cc16);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   }
   .logo-sub { color: var(--muted); font-size: .85rem; margin-top: 4px; }
 
   .card {
-    background: rgba(255,255,255,.03); border: 1px solid var(--border);
+    background: var(--card); border: 1px solid var(--border);
     border-radius: 20px; padding: 32px;
-    box-shadow: 0 25px 50px rgba(0,0,0,.4);
+    box-shadow: 0 25px 50px rgba(0,0,0,.5);
   }
   .card h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 24px; text-align: center; }
 
@@ -47,19 +48,19 @@
     text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px;
   }
   input {
-    background: rgba(255,255,255,.04); border: 1.5px solid var(--border);
+    background: rgba(255,255,255,.07); border: 1.5px solid var(--border);
     border-radius: 10px; color: var(--text); padding: 13px 16px;
     font-size: .95rem; width: 100%; transition: border-color .2s; font-family: inherit;
   }
-  input:focus { outline: none; border-color: var(--purple-light); background: rgba(124,58,237,.06); }
+  input:focus { outline: none; border-color: var(--orange-light); background: rgba(249,115,22,.06); }
 
   .btn {
     width: 100%; padding: 14px;
-    background: linear-gradient(135deg, #7c3aed, #6366f1);
+    background: linear-gradient(135deg, #F97316, #ea6a0a);
     color: #fff; border: none; border-radius: 10px;
     font-size: 1rem; font-weight: 800; cursor: pointer;
     transition: filter .2s, transform .15s; margin-top: 4px;
-    box-shadow: 0 8px 20px rgba(124,58,237,.3);
+    box-shadow: 0 8px 20px rgba(249,115,22,.35);
   }
   .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
   .btn:active { transform: translateY(0); filter: brightness(.95); }
