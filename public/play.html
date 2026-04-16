@@ -78,7 +78,10 @@
   <div class="result-icon" id="result-icon">✅</div>
   <div class="result-label" id="result-label">Bonne réponse !</div>
   <div class="points-badge" id="result-points">+750 pts</div>
-  <div class="waiting-next">En attente du résultat <div class="dot-loader"><span></span><span></span><span></span></div></div>
+  <div class="waiting-card">
+    <div class="waiting-phrase" id="waiting-phrase">⏳ En attente des autres joueurs…</div>
+    <div class="dot-loader"><span></span><span></span><span></span></div>
+  </div>
 </div>
 
 <!-- LEADERBOARD INTERMÉDIAIRE -->
@@ -123,6 +126,10 @@ let resultsRevealTimeout = null; // fix race condition
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  if (id !== 'screen-result' && waitingPhraseInterval) {
+    clearInterval(waitingPhraseInterval);
+    waitingPhraseInterval = null;
+  }
 }
 
 const urlCode = new URLSearchParams(location.search).get('code');
@@ -271,12 +278,56 @@ socket.on('answer:ok', ({ correct, points }) => {
   showAnswerResult(correct, points);
 });
 
+const WAITING_PHRASES_CORRECT = [
+  '🔥 En feu ! Continue comme ça !',
+  '🧠 Ton cerveau carbure !',
+  '⚡ Réponse éclair !',
+  '🎯 Dans le mille !',
+  '🏆 Du grand art !',
+  '🦊 Malin comme un renard !',
+  '🚀 Tu déchires !',
+  '😎 Trop fort(e) !',
+  '💡 Lumière allumée !',
+  '🌟 Étoile montante !',
+];
+const WAITING_PHRASES_WRONG = [
+  '😅 Raté… mais t\'es encore dans la course !',
+  '🐬 Même les dauphins se trompent parfois.',
+  '🎲 Pas de chance cette fois !',
+  '💪 La prochaine sera la bonne !',
+  '🦋 Rebondis comme un papillon !',
+  '🤔 Retiens bien la bonne réponse !',
+  '🧠 Le cerveau chauffe, c\'est bon signe !',
+  '🎮 Game on, t\'as encore une chance !',
+];
+
+let waitingPhraseInterval = null;
+
 function showAnswerResult(correct, points) {
   if (correct) Audio.correct(); else Audio.wrong();
   document.getElementById('result-icon').textContent = correct ? '✅' : '❌';
   document.getElementById('result-label').textContent = correct ? 'Bonne réponse !' : 'Mauvaise réponse…';
   document.getElementById('result-points').textContent = correct ? `+${points.toLocaleString('fr-FR')} pts` : '0 pts';
   document.getElementById('result-points').style.borderColor = correct ? 'var(--green)' : 'var(--red)';
+
+  // Lancer les phrases qui défilent
+  const phrases = correct ? WAITING_PHRASES_CORRECT : WAITING_PHRASES_WRONG;
+  const el = document.getElementById('waiting-phrase');
+  let idx = Math.floor(Math.random() * phrases.length);
+  el.textContent = phrases[idx];
+  if (waitingPhraseInterval) clearInterval(waitingPhraseInterval);
+  waitingPhraseInterval = setInterval(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-8px)';
+    el.style.transition = 'opacity .3s, transform .3s';
+    setTimeout(() => {
+      idx = (idx + 1) % phrases.length;
+      el.textContent = phrases[idx];
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+    }, 320);
+  }, 2800);
+
   show('screen-result');
 }
 
