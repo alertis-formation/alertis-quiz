@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: linear-gradient(160deg, #2A4E7A 0%, #1e3d61 100%);
+  background-attachment: fixed;
+  color: #fff;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 24px;
+  text-align: center;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Orbes décoratifs ────────────────────────────── */
+.bg-orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.orb { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .22; animation: orb-float 14s ease-in-out infinite; }
+.orb1 { width: 500px; height: 500px; background: #F97316; top: -120px; left: -120px; }
+.orb2 { width: 420px; height: 420px; background: #6AA5E8; bottom: -100px; right: -100px; animation-delay: -5s; }
+.orb3 { width: 300px; height: 300px; background: #D6E6FF; top: 50%; left: 50%; animation-delay: -9s; }
+@keyframes orb-float { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-28px) scale(1.04)} }
+.orb3 { animation: orb-float3 11s ease-in-out infinite; }
+@keyframes orb-float3 { 0%,100%{transform:translate(-50%,-50%) scale(1)} 50%{transform:translate(-50%,-60%) scale(1.08)} }
+
+/* ── Contenu ────────────────────────────────────── */
+.content { position: relative; z-index: 1; max-width: 560px; width: 100%; }
+
+.logo-wrap { margin-bottom: 10px; animation: logo-in .7s cubic-bezier(.22,.68,0,1.2) both; }
+.logo-icon { font-size: 3.5rem; display: block; margin-bottom: 8px; filter: drop-shadow(0 4px 16px rgba(249,115,22,.3)); }
+.logo-text {
+  font-size: 2.8rem; font-weight: 900; letter-spacing: -.02em;
+  background: linear-gradient(135deg, #F97316 0%, #6AA5E8 60%, #2A4E7A 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  line-height: 1;
+}
+@keyframes logo-in { from{opacity:0;transform:scale(.8) translateY(-20px)} to{opacity:1;transform:scale(1) translateY(0)} }
+
+.tagline {
+  color: rgba(255,255,255,.7); font-size: .95rem; font-weight: 500;
+  margin-bottom: 40px;
+  animation: fade-up .6s ease both; animation-delay: .15s;
+}
+
+.cards {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  animation: fade-up .6s ease both; animation-delay: .25s;
+}
+@media (max-width: 480px) { .cards { grid-template-columns: 1fr; } .logo-text { font-size: 2rem; } }
+
+.card {
+  background: #fff;
+  border: 1.5px solid #ddeaff;
+  border-radius: 20px; padding: 28px 20px;
+  text-decoration: none; color: #1F2937;
+  transition: transform .25s, border-color .25s, box-shadow .25s;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.2);
+  position: relative; overflow: hidden;
+}
+.card:hover { transform: translateY(-6px); }
+.card-admin:hover { border-color: #F97316; box-shadow: 0 16px 40px rgba(249,115,22,.25); }
+.card-player:hover { border-color: #6AA5E8; box-shadow: 0 16px 40px rgba(106,165,232,.25); }
+
+.card-icon { font-size: 2.4rem; }
+.card-title { font-size: 1.1rem; font-weight: 800; color: #2A4E7A; }
+.card-desc { color: #6B7280; font-size: .82rem; line-height: 1.5; }
+.card-btn {
+  margin-top: 4px; padding: 11px 24px; border-radius: 10px;
+  font-size: .9rem; font-weight: 700; border: none; cursor: pointer;
+  transition: all .2s; width: 100%;
+}
+.btn-admin  { background: #F97316; color: #fff; box-shadow: 0 4px 12px rgba(249,115,22,.3); }
+.btn-admin:hover  { background: #EA580C; }
+.btn-player { background: #2A4E7A; color: #fff; box-shadow: 0 4px 12px rgba(42,78,122,.25); }
+.btn-player:hover { background: #1e3d61; }
+.card-btn:hover { transform: translateY(-1px); }
+
+@keyframes fade-up { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+.footer { position: relative; z-index: 1; margin-top: 28px; color: rgba(255,255,255,.4); font-size: .75rem; animation: fade-up .6s ease both; animation-delay: .4s; }
