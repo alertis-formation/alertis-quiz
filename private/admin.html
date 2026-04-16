@@ -7,9 +7,11 @@
 <script src="/socket.io/socket.io.js"></script>
 <style>
   :root {
-    --bg: #F5F9FF;
+    --bg: #2A4E7A;
+    --bg2: #1e3d61;
     --card: #FFFFFF;
     --card2: #EEF4FF;
+    --input-bg: #F5F9FF;
     --blue-dk: #2A4E7A;
     --blue-md: #6AA5E8;
     --blue-lt: #D6E6FF;
@@ -27,7 +29,7 @@
     --c1: #ef4444; --c2: #6AA5E8; --c3: #10b981; --c4: #f59e0b; --c5: #8b5cf6; --c6: #06b6d4;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+  body { background: linear-gradient(160deg, #2A4E7A 0%, #1e3d61 100%); background-attachment: fixed; color: #fff; font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
 
   /* ── Nav ──────────────────────────────────────────── */
   nav {
@@ -76,7 +78,7 @@
 
   /* ── Inputs ────────────────────────────────────────── */
   input, select, textarea {
-    background: var(--bg); border: 1.5px solid var(--border);
+    background: var(--input-bg); border: 1.5px solid var(--border);
     border-radius: 10px; color: var(--text);
     padding: 10px 14px; font-size: 0.9rem; width: 100%;
     transition: border-color .2s, box-shadow .2s; font-family: inherit;
@@ -100,7 +102,7 @@
   .quiz-name { font-weight: 800; font-size: 1rem; color: var(--text); }
   .quiz-meta { font-size: 0.8rem; color: var(--muted); margin-top: 3px; }
   .quiz-actions { display: flex; gap: 8px; flex-shrink: 0; }
-  .empty-state { text-align: center; padding: 64px 20px; color: var(--muted); }
+  .empty-state { text-align: center; padding: 64px 20px; color: rgba(255,255,255,.6); }
   .empty-state .big { font-size: 3rem; margin-bottom: 12px; }
 
   /* ── Editor ──────────────────────────────────────── */
@@ -122,7 +124,7 @@
   .choice-row { display: flex; align-items: center; gap: 8px; }
   .choice-dot { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: .7rem; color: #fff; font-weight: 700; }
   .correct-radio { accent-color: var(--orange); width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
-  .type-btn { padding: 6px 16px; border-radius: 20px; font-size: .82rem; font-weight: 700; cursor: pointer; border: 1.5px solid var(--border); background: var(--bg); color: var(--muted); transition: all .2s; }
+  .type-btn { padding: 6px 16px; border-radius: 20px; font-size: .82rem; font-weight: 700; cursor: pointer; border: 1.5px solid var(--border); background: var(--input-bg); color: var(--muted); transition: all .2s; }
   .type-btn.active { background: var(--blue-dk); border-color: var(--blue-dk); color: #fff; box-shadow: 0 3px 10px rgba(42,78,122,.25); }
 
   /* ── Game panels ──────────────────────────────────── */
@@ -170,7 +172,7 @@
   .lb-row {
     display: flex; align-items: center; gap: 12px;
     padding: 12px 16px; border-radius: 12px; margin-bottom: 8px;
-    background: var(--bg); border: 1.5px solid var(--border);
+    background: var(--input-bg); border: 1.5px solid var(--border);
     transition: all .2s;
   }
   .lb-row:hover { border-color: var(--blue-md); box-shadow: var(--shadow-sm); }
@@ -183,7 +185,7 @@
 
   .timer-num { font-size: 2.5rem; font-weight: 900; color: var(--blue-dk); text-align: center; }
   .stat-pill { display: inline-block; background: var(--blue-lt); border-radius: 20px; padding: 4px 14px; font-size: 0.82rem; color: var(--blue-dk); border: 1px solid var(--border); font-weight: 600; }
-  .section-title { font-size: 0.72rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
+  .section-title { font-size: 0.72rem; font-weight: 800; color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
   .divider { border: none; border-top: 1.5px solid var(--border); margin: 20px 0; }
   .row { display: flex; gap: 12px; align-items: flex-start; }
   .row .field { flex: 1; }
