@@ -37,11 +37,6 @@ function requireAnimateur(req, res, next) {
   res.redirect('/login.html');
 }
 
-// Middleware : tout utilisateur connecté (admin, animateur, viewer)
-function requireAny(req, res, next) {
-  if (req.session.isAdmin || req.session.isAnimateur || req.session.isViewer) return next();
-  res.redirect('/login.html');
-}
 
 // Servir admin.html uniquement si connecté
 app.get('/admin.html', requireAuth, (req, res) => {
@@ -53,10 +48,6 @@ app.get('/animateur.html', requireAnimateur, (req, res) => {
   res.sendFile(path.join(__dirname, 'private', 'animateur.html'));
 });
 
-// Servir viewer.html (lecture seule)
-app.get('/viewer.html', requireAny, (req, res) => {
-  res.sendFile(path.join(__dirname, 'private', 'viewer.html'));
-});
 
 // Servir display.html (affichage projecteur — animateur ou admin)
 app.get('/display.html', requireAnimateur, (req, res) => {
@@ -85,12 +76,6 @@ app.post('/api/login', (req, res) => {
     req.session.animateurName = email.split('@')[0];
     return res.json({ ok: true, role: 'animateur' });
   }
-  const VIEWER_EMAIL = process.env.VIEWER_EMAIL || '';
-  const VIEWER_PASSWORD = process.env.VIEWER_PASSWORD || '';
-  if (VIEWER_EMAIL && email === VIEWER_EMAIL && password === VIEWER_PASSWORD) {
-    req.session.isViewer = true;
-    return res.json({ ok: true, role: 'viewer' });
-  }
   res.status(401).json({ error: 'Email ou mot de passe incorrect' });
 });
 
@@ -106,7 +91,6 @@ app.get('/api/auth-check', (req, res) => {
 app.get('/api/me', (req, res) => {
   if (req.session.isAdmin) return res.json({ role: 'admin' });
   if (req.session.isAnimateur) return res.json({ role: 'animateur', name: req.session.animateurName });
-  if (req.session.isViewer) return res.json({ role: 'viewer' });
   res.status(401).json({ error: 'Non authentifié' });
 });
 
@@ -160,8 +144,8 @@ const games = {};
 // ============================================================
 // API REST — Gestion des quizzes
 // ============================================================
-// Lecture accessible à tous les utilisateurs connectés
-app.get('/api/quizzes', requireAny, (_req, res) => res.json(getQuizzes()));
+// Lecture accessible aux admin et animateurs
+app.get('/api/quizzes', requireAnimateur, (_req, res) => res.json(getQuizzes()));
 
 app.post('/api/quizzes', requireAuth, (req, res) => {
   const quizzes = getQuizzes();
