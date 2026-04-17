@@ -100,6 +100,19 @@ body {
 .podium-name { font-weight: 800; font-size: .95rem; text-align: center; }
 .podium-score { font-size: .85rem; color: var(--orange); font-weight: 700; }
 
+/* ── NEXT BUTTON ─────────────────────────────────── */
+.next-btn-d {
+  position: fixed; bottom: 32px; right: 40px;
+  background: linear-gradient(135deg,#F97316,#f59e0b);
+  color: #fff; font-size: 1.3rem; font-weight: 900;
+  border: none; border-radius: 50px; padding: 16px 36px;
+  cursor: pointer; box-shadow: 0 8px 32px rgba(249,115,22,.5);
+  transition: transform .15s, box-shadow .15s;
+  animation: btn-pop .4s cubic-bezier(.22,.68,0,1.2) both;
+}
+.next-btn-d:hover { transform: scale(1.06); box-shadow: 0 12px 40px rgba(249,115,22,.7); }
+.next-btn-d:active { transform: scale(.97); }
+
 /* ── END ─────────────────────────────────────────── */
 #screen-end { gap: 24px; text-align: center; }
 .end-title-d { font-size: 3rem; font-weight: 900; background: linear-gradient(135deg,#F97316,#6AA5E8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
@@ -161,6 +174,7 @@ body {
   <div class="answer-bars-d" id="d-answer-bars"></div>
   <div class="explanation-d" id="d-explanation" style="display:none;"></div>
   <div class="top3-d" id="d-top3"></div>
+  <button class="next-btn-d" id="d-next-btn" onclick="nextQuestion()">Suivant ▶</button>
 </div>
 
 <!-- END -->
@@ -295,22 +309,27 @@ socket.on('display:results', data => {
   if (data.explanation) { expBox.textContent = '💡 ' + data.explanation; expBox.style.display = 'block'; }
   else expBox.style.display = 'none';
 
-  // Top 3 podium
+  // Top 3 podium — ordre visuel : 2e | 1er | 3e
   const lb = (data.leaderboard || []).slice(0, 3);
-  const podiumOrder = [lb[1], lb[0], lb[2]].filter(Boolean); // 2nd - 1st - 3rd
-  const podiumHeights = ['120px', '160px', '90px'];
-  const podiumEmojis = ['🥈', '🥇', '🥉'];
-  document.getElementById('d-top3').innerHTML = podiumOrder.map((p, vi) => {
-    const orig = lb.indexOf(p);
-    return `<div class="podium-item">
-      <div class="podium-bar" style="height:${podiumHeights[vi]}">${podiumEmojis[vi]}</div>
-      <div class="podium-name">${esc(p.name)}</div>
-      <div class="podium-score">${p.score.toLocaleString('fr-FR')} pts</div>
-    </div>`;
-  }).join('');
+  const podiumSlots = [
+    { player: lb[1], emoji: '🥈', height: '120px' },
+    { player: lb[0], emoji: '🥇', height: '160px' },
+    { player: lb[2], emoji: '🥉', height: '90px' },
+  ].filter(s => s.player);
+  document.getElementById('d-top3').innerHTML = podiumSlots.map(s => `<div class="podium-item">
+    <div class="podium-bar" style="height:${s.height}">${s.emoji}</div>
+    <div class="podium-name">${esc(s.player.name)}</div>
+    <div class="podium-score">${s.player.score.toLocaleString('fr-FR')} pts</div>
+  </div>`).join('');
+
+  document.getElementById('d-next-btn').textContent = data.isLast ? '🏁 Classement final' : 'Suivant ▶';
 
   show('screen-results');
 });
+
+function nextQuestion() {
+  socket.emit('display:next', { code });
+}
 
 socket.on('display:end', ({ leaderboard }) => {
   document.getElementById('d-end-lb').innerHTML = leaderboard.slice(0, 8).map((p, i) => {
