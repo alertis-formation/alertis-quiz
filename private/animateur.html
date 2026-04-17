@@ -6,6 +6,29 @@
 <title>Alertis Quiz — Animateur</title>
 <link rel="stylesheet" href="/css/admin.css" />
 <link rel="stylesheet" href="/css/floaters.css" />
+<style>
+#game-split { display: flex; gap: 16px; align-items: flex-start; }
+#game-controls { flex: 1; min-width: 0; }
+#display-pane {
+  flex: 0 0 48%;
+  display: flex; flex-direction: column;
+  background: #0f1e35;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1.5px solid rgba(255,255,255,.1);
+  height: calc(100vh - 90px);
+  position: sticky; top: 16px;
+}
+#display-pane-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(255,255,255,.06);
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  font-size: .85rem; font-weight: 700; color: rgba(255,255,255,.7);
+  flex-shrink: 0;
+}
+#display-iframe { flex: 1; border: none; width: 100%; height: 100%; }
+</style>
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 </head>
@@ -72,6 +95,8 @@
 
 <!-- PAGE : PARTIE EN COURS -->
 <div class="page" id="page-game">
+<div id="game-split">
+<div id="game-controls">
 
   <div id="panel-waiting">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
@@ -149,7 +174,18 @@
     </div>
   </div>
 
+</div><!-- /game-controls -->
+
+<div id="display-pane" style="display:none;">
+  <div id="display-pane-header">
+    <span>📺 Affichage projecteur</span>
+    <button class="btn btn-ghost btn-sm" onclick="closeDisplay()">✕ Fermer</button>
+  </div>
+  <iframe id="display-iframe" src="" allowfullscreen></iframe>
 </div>
+
+</div><!-- /game-split -->
+</div><!-- /page-game -->
 
 <script>
 let quizzes = [];
@@ -296,7 +332,14 @@ function copyJoinUrl() {
 }
 function openDisplay() {
   if (!currentGameCode) return;
-  window.open(`/display?code=${currentGameCode}`, '_blank', 'width=1280,height=720,menubar=no,toolbar=no');
+  const iframe = document.getElementById('display-iframe');
+  if (!iframe.src || !iframe.src.includes(currentGameCode)) {
+    iframe.src = `/display?code=${currentGameCode}`;
+  }
+  document.getElementById('display-pane').style.display = 'flex';
+}
+function closeDisplay() {
+  document.getElementById('display-pane').style.display = 'none';
 }
 
 socket.on('players:update', players => {
@@ -481,6 +524,8 @@ socket.on('game:end', ({ leaderboard }) => {
 
 function resetGame() {
   currentGameCode = null; gamePaused = false;
+  closeDisplay();
+  document.getElementById('display-iframe').src = '';
   showTab('library');
 }
 
