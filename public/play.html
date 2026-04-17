@@ -29,6 +29,7 @@
 <!-- JOIN -->
 <div class="screen active" id="screen-join">
   <div class="logo-top">⚡ Alertis Quiz</div>
+  <a href="/" style="position:absolute;top:16px;left:16px;color:rgba(255,255,255,.6);font-size:.85rem;font-weight:600;text-decoration:none;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 12px;">← Accueil</a>
   <div class="card">
     <div class="big-title">Rejoindre</div>
     <div class="subtitle">Entre le code de la partie et ton pseudo</div>
@@ -62,12 +63,13 @@
 <div class="screen" id="screen-question">
   <div class="q-header">
     <span class="q-progress-label" id="q-prog-label">1/1</span>
-    <div class="timer-circle" id="q-timer">20</div>
+    <div class="timer-circle" id="q-timer">30</div>
   </div>
   <div class="progress-wrap">
     <div class="progress-fill" id="q-progress" style="width:100%"></div>
   </div>
   <div class="double-pts-banner hidden" id="double-pts-banner">✨ DOUBLE POINTS !</div>
+  <div class="multi-banner hidden" id="multi-banner">☑️ PLUSIEURS RÉPONSES !</div>
   <img class="q-image hidden" id="q-image" src="" alt="" />
   <div class="q-text" id="q-text">Question...</div>
   <div class="answers-grid" id="answers-grid"></div>
@@ -195,9 +197,18 @@ socket.on('question:start', data => {
   const doubleBanner = document.getElementById('double-pts-banner');
   if (data.doublePoints) {
     doubleBanner.classList.remove('hidden');
-    setTimeout(() => doubleBanner.classList.add('hidden'), 2000);
+    setTimeout(() => doubleBanner.classList.add('hidden'), 2500);
   } else {
     doubleBanner.classList.add('hidden');
+  }
+
+  // Multi-réponses — afficher le badge
+  const multiBanner = document.getElementById('multi-banner');
+  if (data.type === 'multi') {
+    multiBanner.classList.remove('hidden');
+    setTimeout(() => multiBanner.classList.add('hidden'), 2500);
+  } else {
+    multiBanner.classList.add('hidden');
   }
 
   const img = document.getElementById('q-image');
@@ -269,11 +280,11 @@ socket.on('game:resumed', ({ remaining }) => {
   el.className = 'timer-circle';
   const data = window._qData || {};
   let t = remaining;
-  updateTimer(t, data.timeLimit || 20);
+  updateTimer(t, data.timeLimit || 30);
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = setInterval(() => {
     t--;
-    updateTimer(t, data.timeLimit || 20);
+    updateTimer(t, data.timeLimit || 30);
     if (t <= 0) clearInterval(timerInterval);
   }, 1000);
 });

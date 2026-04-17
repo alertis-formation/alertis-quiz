@@ -69,7 +69,10 @@ async function login() {
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
-    if (res.ok) { window.location.href = '/admin.html'; }
+    if (res.ok) {
+      const dest = data.role === 'viewer' ? '/viewer.html' : data.role === 'animateur' ? '/animateur.html' : '/admin.html';
+      window.location.href = dest;
+    }
     else { err.textContent = data.error || 'Erreur de connexion'; btn.disabled = false; btn.textContent = 'Se connecter'; }
   } catch (e) { err.textContent = 'Erreur réseau'; btn.disabled = false; btn.textContent = 'Se connecter'; }
 }

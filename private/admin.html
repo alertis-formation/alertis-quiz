@@ -41,15 +41,17 @@
 <div class="page active" id="page-quizzes">
 
   <div id="quiz-list-view">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-      <h2 style="font-size:1.4rem;font-weight:800;">Mes Quiz</h2>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <select id="folder-filter" onchange="renderQuizList()" style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:.85rem;cursor:pointer;">
-          <option value="">Tous les dossiers</option>
-        </select>
-        <button class="btn btn-ghost" onclick="openImportModal()">📋 Importer du texte</button>
-        <button class="btn btn-primary" onclick="newQuiz()">+ Nouveau quiz</button>
+    <div class="klib-header">
+      <button class="klib-tab active">📚 Bibliothèque</button>
+      <div class="klib-search-wrap">
+        <span class="klib-search-icon">🔍</span>
+        <input type="text" id="quiz-search" class="klib-search" placeholder="Rechercher dans la bibliothèque…" oninput="renderQuizList()" autocomplete="off" />
       </div>
+      <select id="folder-filter" onchange="renderQuizList()" style="padding:8px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:.85rem;cursor:pointer;">
+        <option value="">Tous les dossiers</option>
+      </select>
+      <button class="btn btn-ghost" onclick="openImportModal()">📋 Importer</button>
+      <button class="btn btn-primary" onclick="newQuiz()">+ Nouveau quiz</button>
     </div>
     <div id="quiz-list"></div>
   </div>
@@ -138,8 +140,9 @@
         <div class="code-display" id="game-code-display">------</div>
         <div class="qr-wrap"><img id="qr-img" src="" alt="QR Code" width="200" /></div>
         <div class="join-url" id="join-url"></div>
-        <div style="text-align:center;margin-top:12px;">
+        <div style="text-align:center;margin-top:12px;display:flex;gap:8px;justify-content:center;">
           <button class="btn btn-ghost btn-sm" onclick="copyJoinUrl()">📋 Copier le lien</button>
+          <button class="btn btn-ghost btn-sm" onclick="openDisplay()">📺 Affichage</button>
         </div>
       </div>
       <div class="card">
@@ -158,13 +161,17 @@
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <span class="stat-pill" id="q-counter">Question 1/1</span>
-        <span class="stat-pill" id="q-answers-progress">0/0 réponses</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="stat-pill" id="q-answers-progress">0/0 réponses</span>
+          <button class="btn btn-ghost btn-sm" onclick="openDisplay()" title="Ouvrir l'affichage projecteur">📺 Affichage</button>
+        </div>
       </div>
       <div class="progress-bar-wrap">
         <div class="progress-bar" id="q-progress-bar" style="width:0%"></div>
       </div>
-      <div class="timer-num" id="q-timer">⏱ 20</div>
+      <div class="timer-num" id="q-timer">⏱ 30</div>
       <div class="q-text-big" id="q-text"></div>
+      <img id="q-question-img" src="" alt="" class="hidden" style="max-height:180px;border-radius:12px;margin:8px auto 0;display:block;object-fit:cover;" />
       <div class="choices-display" id="q-choices-display"></div>
       <!-- Open answers panel (affiché si type=open) -->
       <div id="open-answers-panel" class="hidden" style="margin-top:12px;">
@@ -228,11 +235,46 @@ async function loadQuizzes() {
   renderQuizList();
 }
 
+// Gradients de fallback pour les quiz sans image
+const KGRADIENTS = [
+  'linear-gradient(135deg,#ef4444,#f97316)',
+  'linear-gradient(135deg,#6AA5E8,#8b5cf6)',
+  'linear-gradient(135deg,#10b981,#06b6d4)',
+  'linear-gradient(135deg,#f59e0b,#ef4444)',
+  'linear-gradient(135deg,#8b5cf6,#ec4899)',
+  'linear-gradient(135deg,#F97316,#6AA5E8)',
+  'linear-gradient(135deg,#06b6d4,#10b981)',
+  'linear-gradient(135deg,#3b82f6,#2A4E7A)',
+];
+const KICONS = ['🔥','🧠','⚡','🎯','🏆','💡','🚀','🎲','🎓','🌟'];
+
+function kGradient(title) {
+  let h = 0;
+  for (const c of title) h = (h * 31 + c.charCodeAt(0)) & 0x7fffffff;
+  return KGRADIENTS[h % KGRADIENTS.length];
+}
+function kIcon(title) {
+  let h = 0;
+  for (const c of title) h = (h * 37 + c.charCodeAt(0)) & 0x7fffffff;
+  return KICONS[h % KICONS.length];
+}
+function kThumb(quiz) {
+  if (quiz.image) return quiz.image;
+  for (const q of quiz.questions || []) {
+    if (q.image) return q.image;
+    for (const c of q.choices || []) {
+      if (c && c.image) return c.image;
+    }
+  }
+  return null;
+}
+
 function renderQuizList() {
   const el = document.getElementById('quiz-list');
   const filterVal = document.getElementById('folder-filter').value;
+  const searchVal = (document.getElementById('quiz-search')?.value || '').toLowerCase().trim();
 
-  // Mettre à jour le filtre
+  // Mettre à jour le filtre dossiers
   const folders = [...new Set(quizzes.map(q => q.folder || '').filter(f => f))].sort();
   const filterSel = document.getElementById('folder-filter');
   const currentFilter = filterSel.value;
@@ -240,10 +282,14 @@ function renderQuizList() {
     folders.map(f => `<option value="${esc(f)}" ${currentFilter === f ? 'selected' : ''}>${esc(f)}</option>`).join('');
 
   let filtered = quizzes;
-  if (filterVal) filtered = quizzes.filter(q => (q.folder || '') === filterVal);
+  if (filterVal) filtered = filtered.filter(q => (q.folder || '') === filterVal);
+  if (searchVal) filtered = filtered.filter(q =>
+    q.title.toLowerCase().includes(searchVal) ||
+    (q.folder || '').toLowerCase().includes(searchVal)
+  );
 
   if (filtered.length === 0) {
-    el.innerHTML = `<div class="empty-state"><div class="big">📝</div><p>Aucun quiz pour l'instant.</p><p style="margin-top:8px;font-size:.85rem;">Créez votre premier quiz !</p></div>`;
+    el.innerHTML = `<div class="empty-state"><div class="big">📝</div><p>${searchVal ? 'Aucun quiz ne correspond à ta recherche.' : 'Aucun quiz pour l\'instant.'}</p><p style="margin-top:8px;font-size:.85rem;">${searchVal ? '' : 'Créez votre premier quiz !'}</p></div>`;
     return;
   }
 
@@ -256,29 +302,49 @@ function renderQuizList() {
   }
 
   const folderKeys = Object.keys(groups).sort((a, b) => {
-    if (a === '') return 1;
-    if (b === '') return -1;
-    return a.localeCompare(b);
+    if (a === '') return 1; if (b === '') return -1; return a.localeCompare(b);
   });
 
+  function renderCard(q) {
+    const thumb = kThumb(q);
+    const grad = kGradient(q.title);
+    const icon = kIcon(q.title);
+    const n = q.questions.length;
+    const date = new Date(q.createdAt).toLocaleDateString('fr-FR');
+    return `
+      <div class="kcard">
+        <div class="kcard-thumb" style="background:${grad}">
+          ${thumb ? `<img src="${esc(thumb)}" class="kcard-img" onerror="this.style.display='none'" />` : ''}
+          <div class="kcard-placeholder">${icon}</div>
+          <span class="kcard-count">${n} question${n > 1 ? 's' : ''}</span>
+        </div>
+        <div class="kcard-body">
+          <div class="kcard-title">${esc(q.title)}</div>
+          ${q.folder ? `<div class="kcard-folder">📁 ${esc(q.folder)}</div>` : ''}
+          <div class="kcard-date">Créé le ${date}</div>
+          <div class="kcard-actions">
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editQuiz('${q.id}')" title="Éditer">✏️ Éditer</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();duplicateQuiz('${q.id}')" title="Dupliquer">📋</button>
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();launchQuiz('${q.id}')" title="Lancer">▶ Lancer</button>
+            <button class="btn btn-red btn-sm" onclick="event.stopPropagation();deleteQuiz('${q.id}')" title="Supprimer">🗑</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
   let html = '';
-  for (const folder of folderKeys) {
-    const label = folder || 'Sans dossier';
-    html += `<div style="margin-bottom:8px;font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:4px 0;border-bottom:1px solid var(--border);">📁 ${esc(label)}</div>`;
-    html += groups[folder].map(q => `
-      <div class="quiz-card">
-        <div>
-          <div class="quiz-name">${esc(q.title)}</div>
-          <div class="quiz-meta">${q.questions.length} question(s) · Créé le ${new Date(q.createdAt).toLocaleDateString('fr-FR')}</div>
-        </div>
-        <div class="quiz-actions">
-          <button class="btn btn-ghost btn-sm" onclick="editQuiz('${q.id}')">✏️ Éditer</button>
-          <button class="btn btn-ghost btn-sm" onclick="duplicateQuiz('${q.id}')">📋 Dupliquer</button>
-          <button class="btn btn-primary btn-sm" onclick="launchQuiz('${q.id}')">▶ Lancer</button>
-          <button class="btn btn-red btn-sm" onclick="deleteQuiz('${q.id}')">🗑</button>
-        </div>
-      </div>
-    `).join('');
+  // Si pas de recherche et plusieurs dossiers → grouper
+  const showFolders = !searchVal && folderKeys.length > 1;
+  if (showFolders) {
+    for (const folder of folderKeys) {
+      const label = folder || 'Sans dossier';
+      html += `<div class="kfolder-section">
+        <div class="kfolder-label">📁 ${esc(label)}</div>
+        <div class="kgrid">${groups[folder].map(renderCard).join('')}</div>
+      </div>`;
+    }
+  } else {
+    html = `<div class="kgrid">${filtered.map(renderCard).join('')}</div>`;
   }
   el.innerHTML = html;
 }
@@ -444,7 +510,7 @@ function renderQuestionsList() {
         <div class="row">
           <div class="field">
             <label>Temps (secondes)</label>
-            <input type="number" value="${q.timeLimit||20}" min="5" max="120" style="width:90px" oninput="editingQuiz.questions[${qi}].timeLimit=+this.value" />
+            <input type="number" value="${q.timeLimit||30}" min="5" max="120" style="width:90px" oninput="editingQuiz.questions[${qi}].timeLimit=+this.value" />
           </div>
           <div class="field" style="display:flex;align-items:center;gap:8px;margin-top:8px;">
             <input type="checkbox" id="dp-${qi}" ${q.doublePoints?'checked':''} onchange="editingQuiz.questions[${qi}].doublePoints=this.checked" style="width:auto;margin:0;" />
@@ -516,7 +582,7 @@ function addQuestion() {
   editingQuiz.questions.push({
     text: '', type: 'qcm',
     choices: [{ text: '', image: '' }, { text: '', image: '' }, { text: '', image: '' }, { text: '', image: '' }],
-    correctIndexes: [0], timeLimit: 20, image: '', explanation: '', doublePoints: false
+    correctIndexes: [0], timeLimit: 30, image: '', explanation: '', doublePoints: false
   });
   renderQuestionsList();
   setTimeout(() => {
@@ -608,6 +674,9 @@ socket.on('question:start', data => {
   document.getElementById('q-counter').textContent = `Question ${data.index + 1}/${data.total}`;
   document.getElementById('q-text').textContent = data.text;
   document.getElementById('q-answers-progress').textContent = `0/? réponses`;
+  const qImg = document.getElementById('q-question-img');
+  if (data.image) { qImg.src = data.image; qImg.classList.remove('hidden'); }
+  else qImg.classList.add('hidden');
 
   // Panel réponses ouvertes
   const openPanel = document.getElementById('open-answers-panel');
@@ -697,7 +766,7 @@ socket.on('game:resumed', ({ remaining }) => {
   timerInterval = setInterval(() => {
     t--;
     document.getElementById('q-timer').textContent = `⏱ ${Math.max(0, t)}`;
-    document.getElementById('q-progress-bar').style.width = Math.max(0, t / (data?.timeLimit||20) * 100) + '%';
+    document.getElementById('q-progress-bar').style.width = Math.max(0, t / (data?.timeLimit||30) * 100) + '%';
     if (t <= 0) clearInterval(timerInterval);
   }, 1000);
 });
@@ -761,6 +830,10 @@ socket.on('question:results', data => {
 
 function nextQuestion() { socket.emit('admin:next', { code: currentGameCode }); }
 function endGameAdmin() { if (!confirm('Terminer la partie ?')) return; socket.emit('admin:end-game', { code: currentGameCode }); }
+function openDisplay() {
+  if (!currentGameCode) return toast('Lance d\'abord une partie', 'err');
+  window.open(`/display.html?code=${currentGameCode}`, '_blank', 'width=1280,height=720,menubar=no,toolbar=no');
+}
 
 socket.on('game:end', ({ leaderboard }) => {
   Audio.stopMusic();
@@ -861,7 +934,7 @@ function parseQuizText(text) {
       type,
       choices,
       correctIndexes: correctIndexes.length ? correctIndexes : [0],
-      timeLimit: 20,
+      timeLimit: 30,
       image: '',
       explanation: '',
       doublePoints: false,

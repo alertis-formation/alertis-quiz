@@ -88,7 +88,7 @@
       <div class="progress-bar-wrap">
         <div class="progress-bar" id="q-progress-bar" style="width:0%"></div>
       </div>
-      <div class="timer-num" id="q-timer">⏱ 20</div>
+      <div class="timer-num" id="q-timer">⏱ 30</div>
       <div class="q-text-big" id="q-text"></div>
       <div class="choices-display" id="q-choices-display"></div>
       <!-- Open answers panel -->
@@ -279,7 +279,7 @@ socket.on('game:resumed', ({ remaining }) => {
   timerInterval = setInterval(() => {
     t--;
     document.getElementById('q-timer').textContent = `⏱ ${Math.max(0, t)}`;
-    document.getElementById('q-progress-bar').style.width = Math.max(0, t / (data?.timeLimit||20) * 100) + '%';
+    document.getElementById('q-progress-bar').style.width = Math.max(0, t / (data?.timeLimit||30) * 100) + '%';
     if (t <= 0) clearInterval(timerInterval);
   }, 1000);
 });
