@@ -211,6 +211,15 @@ app.get('/api/qr/:code', async (req, res) => {
 // ============================================================
 io.on('connection', socket => {
 
+  // ── DISPLAY : passer à la question suivante ───────────────
+  socket.on('display:next', ({ code }) => {
+    const g = games[code];
+    if (!g || g.state !== 'results') return;
+    const next = g.currentQ + 1;
+    if (next >= g.quiz.questions.length) endGame(g);
+    else sendQuestion(g, next);
+  });
+
   // ── DISPLAY : rejoindre en spectateur ─────────────────────
   socket.on('display:join', ({ code }) => {
     const g = games[code];
