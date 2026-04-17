@@ -100,6 +100,11 @@
         <label>Dossier (optionnel)</label>
         <input type="text" id="quiz-folder-input" placeholder="Ex: Formation incendie" maxlength="50" />
       </div>
+      <div class="field">
+        <label>Image d'accueil (URL, optionnel)</label>
+        <input type="url" id="quiz-image-input" placeholder="https://…" />
+        <img id="quiz-image-preview" src="" alt="" style="display:none;max-height:120px;border-radius:8px;margin-top:8px;object-fit:cover;" onerror="this.style.display='none'" />
+      </div>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
       <div class="section-title" style="margin:0;">Questions</div>
@@ -394,6 +399,16 @@ function openEditor(title) {
   document.getElementById('editor-title').textContent = title;
   document.getElementById('quiz-title-input').value = editingQuiz.title;
   document.getElementById('quiz-folder-input').value = editingQuiz.folder || '';
+  const imgInput = document.getElementById('quiz-image-input');
+  const imgPreview = document.getElementById('quiz-image-preview');
+  imgInput.value = editingQuiz.image || '';
+  if (editingQuiz.image) { imgPreview.src = editingQuiz.image; imgPreview.style.display = 'block'; }
+  else imgPreview.style.display = 'none';
+  imgInput.oninput = () => {
+    const url = imgInput.value.trim();
+    if (url) { imgPreview.src = url; imgPreview.style.display = 'block'; }
+    else imgPreview.style.display = 'none';
+  };
   renderQuestionsList();
 }
 
@@ -608,6 +623,7 @@ async function saveQuiz() {
   const title = document.getElementById('quiz-title-input').value.trim();
   if (!title) return toast('Titre requis', 'err');
   editingQuiz.folder = document.getElementById('quiz-folder-input').value.trim();
+  editingQuiz.image = document.getElementById('quiz-image-input').value.trim();
   for (const [i, q] of editingQuiz.questions.entries()) {
     normalizeQ(q);
     if (!q.text.trim()) return toast(`Question ${i+1} : énoncé vide`, 'err');
