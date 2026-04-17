@@ -83,14 +83,61 @@ textarea { resize: vertical; min-height: 60px; }
 label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 .field { margin-bottom: 16px; }
 
-/* ── Quiz list cards ─────────────────────────────── */
-.quiz-card {
-  background: var(--card); border: 1.5px solid var(--border);
-  border-radius: var(--radius); padding: 18px 22px;
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 10px; transition: all .22s; box-shadow: var(--shadow-sm);
+/* ── Library header ──────────────────────────────── */
+.klib-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;
 }
-.quiz-card:hover { border-color: var(--blue-md); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.klib-tab {
+  padding: 9px 22px; border-radius: 24px; font-size: .9rem; font-weight: 700; cursor: pointer;
+  border: none; transition: all .2s; background: rgba(255,255,255,.15); color: var(--text);
+}
+.klib-tab.active { background: var(--blue-dk); color: #fff; box-shadow: 0 3px 12px rgba(42,78,122,.3); }
+.klib-search-wrap { flex: 1; min-width: 220px; position: relative; display: flex; align-items: center; }
+.klib-search-icon { position: absolute; left: 13px; font-size: .9rem; pointer-events: none; }
+.klib-search {
+  padding: 10px 14px 10px 38px; border-radius: 24px;
+  border: 1.5px solid var(--border); width: 100%; font-size: .9rem;
+}
+
+/* ── Kahoot-style card grid ──────────────────────── */
+.kgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.kfolder-section { margin-bottom: 28px; }
+.kfolder-label {
+  font-size: .78rem; font-weight: 800; color: rgba(255,255,255,.65);
+  text-transform: uppercase; letter-spacing: .08em;
+  margin-bottom: 12px; padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
+.kcard {
+  background: var(--card); border-radius: 14px; overflow: hidden;
+  border: 1.5px solid var(--border); box-shadow: var(--shadow-sm);
+  transition: all .22s; cursor: pointer; position: relative;
+}
+.kcard:hover { transform: translateY(-5px); box-shadow: var(--shadow-hv); border-color: var(--blue-md); }
+.kcard-thumb { position: relative; padding-top: 58%; overflow: hidden; }
+.kcard-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.kcard-placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; }
+.kcard-count {
+  position: absolute; bottom: 8px; left: 8px;
+  background: rgba(0,0,0,.55); color: #fff;
+  font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px;
+  backdrop-filter: blur(4px);
+}
+.kcard-body { padding: 12px; }
+.kcard-title {
+  font-weight: 800; font-size: .92rem; color: var(--text);
+  margin-bottom: 4px; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.kcard-folder { font-size: .72rem; color: var(--muted); margin-bottom: 6px; }
+.kcard-date { font-size: .72rem; color: var(--muted); }
+.kcard-actions {
+  display: flex; gap: 4px; margin-top: 10px; opacity: 0; transition: opacity .2s;
+}
+.kcard:hover .kcard-actions { opacity: 1; }
+.kcard-actions .btn { padding: 5px 10px; font-size: .78rem; }
+
+/* Legacy (kept for compatibility) */
 .quiz-name { font-weight: 800; font-size: 1rem; color: var(--text); }
 .quiz-meta { font-size: 0.8rem; color: var(--muted); margin-top: 3px; }
 .quiz-actions { display: flex; gap: 8px; flex-shrink: 0; }

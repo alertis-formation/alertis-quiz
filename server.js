@@ -17,7 +17,7 @@ app.use(express.json());
 // Sessions
 // ============================================================
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'kahoot-maison-secret-change-moi',
+  secret: process.env.SESSION_SECRET || 'alertis-quiz-secret-change-moi',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 24 * 60 * 60 * 1000 }, // 24h
@@ -37,6 +37,12 @@ function requireAnimateur(req, res, next) {
   res.redirect('/login.html');
 }
 
+// Middleware : tout utilisateur connecté (admin, animateur, viewer)
+function requireAny(req, res, next) {
+  if (req.session.isAdmin || req.session.isAnimateur || req.session.isViewer) return next();
+  res.redirect('/login.html');
+}
+
 // Servir admin.html uniquement si connecté
 app.get('/admin.html', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'private', 'admin.html'));
@@ -45,6 +51,16 @@ app.get('/admin.html', requireAuth, (req, res) => {
 // Servir animateur.html si animateur ou admin
 app.get('/animateur.html', requireAnimateur, (req, res) => {
   res.sendFile(path.join(__dirname, 'private', 'animateur.html'));
+});
+
+// Servir viewer.html (lecture seule)
+app.get('/viewer.html', requireAny, (req, res) => {
+  res.sendFile(path.join(__dirname, 'private', 'viewer.html'));
+});
+
+// Servir display.html (affichage projecteur — animateur ou admin)
+app.get('/display.html', requireAnimateur, (req, res) => {
+  res.sendFile(path.join(__dirname, 'private', 'display.html'));
 });
 
 // Tout le reste est public (play.html, index.html, login.html...)
@@ -69,6 +85,12 @@ app.post('/api/login', (req, res) => {
     req.session.animateurName = email.split('@')[0];
     return res.json({ ok: true, role: 'animateur' });
   }
+  const VIEWER_EMAIL = process.env.VIEWER_EMAIL || '';
+  const VIEWER_PASSWORD = process.env.VIEWER_PASSWORD || '';
+  if (VIEWER_EMAIL && email === VIEWER_EMAIL && password === VIEWER_PASSWORD) {
+    req.session.isViewer = true;
+    return res.json({ ok: true, role: 'viewer' });
+  }
   res.status(401).json({ error: 'Email ou mot de passe incorrect' });
 });
 
@@ -84,6 +106,7 @@ app.get('/api/auth-check', (req, res) => {
 app.get('/api/me', (req, res) => {
   if (req.session.isAdmin) return res.json({ role: 'admin' });
   if (req.session.isAnimateur) return res.json({ role: 'animateur', name: req.session.animateurName });
+  if (req.session.isViewer) return res.json({ role: 'viewer' });
   res.status(401).json({ error: 'Non authentifié' });
 });
 
@@ -137,8 +160,8 @@ const games = {};
 // ============================================================
 // API REST — Gestion des quizzes
 // ============================================================
-// Lecture accessible aux animateurs aussi
-app.get('/api/quizzes', requireAnimateur, (_req, res) => res.json(getQuizzes()));
+// Lecture accessible à tous les utilisateurs connectés
+app.get('/api/quizzes', requireAny, (_req, res) => res.json(getQuizzes()));
 
 app.post('/api/quizzes', requireAuth, (req, res) => {
   const quizzes = getQuizzes();
@@ -203,6 +226,34 @@ app.get('/api/qr/:code', async (req, res) => {
 // Socket.io — Logique temps réel
 // ============================================================
 io.on('connection', socket => {
+
+  // ── DISPLAY : rejoindre en spectateur ─────────────────────
+  socket.on('display:join', ({ code }) => {
+    const g = games[code];
+    if (!g) return socket.emit('display:error', 'Partie introuvable');
+    socket.join(`display:${code}`);
+    socket.data = { role: 'display', code };
+    // Envoyer l'état courant immédiatement
+    socket.emit('display:players', {
+      count: Object.keys(g.players).length,
+      players: playerList(g),
+    });
+    if (g.state === 'question') {
+      const q = normalizeQuestion(g.quiz.questions[g.currentQ]);
+      const elapsed = Math.floor((Date.now() - g.qStartTime) / 1000);
+      socket.emit('display:question', {
+        index: g.currentQ,
+        total: g.quiz.questions.length,
+        text: q.text,
+        image: q.image || null,
+        choices: q.choices,
+        type: q.type || 'qcm',
+        timeLimit: q.timeLimit || 30,
+        doublePoints: q.doublePoints || false,
+        remaining: Math.max(0, (q.timeLimit || 30) - elapsed),
+      });
+    }
+  });
 
   // ── ADMIN : créer une nouvelle partie ──────────────────────
   socket.on('admin:create', ({ quizId, blindMode }) => {
@@ -283,7 +334,7 @@ io.on('connection', socket => {
     g.paused = true;
     const elapsed = (Date.now() - g.qStartTime) / 1000;
     const q = g.quiz.questions[g.currentQ];
-    g.pausedRemaining = Math.max(0, (q.timeLimit || 20) - elapsed);
+    g.pausedRemaining = Math.max(0, (q.timeLimit || 30) - elapsed);
     if (g.qTimer) { clearTimeout(g.qTimer); g.qTimer = null; }
     io.to(`g:${code}`).emit('game:paused', { remaining: Math.ceil(g.pausedRemaining) });
   });
@@ -293,7 +344,7 @@ io.on('connection', socket => {
     const g = games[code];
     if (!g || g.adminSocketId !== socket.id || !g.paused) return;
     g.paused = false;
-    g.qStartTime = Date.now() - ((g.quiz.questions[g.currentQ].timeLimit || 20) - g.pausedRemaining) * 1000;
+    g.qStartTime = Date.now() - ((g.quiz.questions[g.currentQ].timeLimit || 30) - g.pausedRemaining) * 1000;
     io.to(`g:${code}`).emit('game:resumed', { remaining: Math.ceil(g.pausedRemaining) });
     g.qTimer = setTimeout(() => {
       if (games[g.code]?.state === 'question') showResults(games[g.code]);
@@ -334,6 +385,7 @@ io.on('connection', socket => {
       questionCount: g.quiz.questions.length,
     });
     io.to(`g:${code}`).emit('players:update', playerList(g));
+    io.to(`display:${code}`).emit('display:players', { count: Object.keys(g.players).length, players: playerList(g) });
     console.log(`[GAME] ${name} rejoint ${code}`);
   });
 
@@ -346,7 +398,7 @@ io.on('connection', socket => {
 
     const q = normalizeQuestion(g.quiz.questions[g.currentQ]);
     const ms = Date.now() - g.qStartTime;
-    const timeLimit = (q.timeLimit || 20) * 1000;
+    const timeLimit = (q.timeLimit || 30) * 1000;
 
     // Type open : stocker le texte, pas de points automatiques
     if (q.type === 'open') {
@@ -438,6 +490,7 @@ io.on('connection', socket => {
       const name = g.players[socket.id]?.name;
       delete g.players[socket.id];
       io.to(`g:${code}`).emit('players:update', playerList(g));
+      io.to(`display:${code}`).emit('display:players', { count: Object.keys(g.players).length, players: playerList(g) });
       if (name) console.log(`[GAME] ${name} a quitté ${code}`);
     }
   });
@@ -455,7 +508,7 @@ function sendQuestion(g, idx) {
   g.paused = false;
 
   const q = normalizeQuestion(g.quiz.questions[idx]);
-  const timeLimit = q.timeLimit || 20;
+  const timeLimit = q.timeLimit || 30;
 
   io.to(`g:${g.code}`).emit('question:start', {
     index: idx,
@@ -472,6 +525,19 @@ function sendQuestion(g, idx) {
     if (games[g.code]?.state === 'question' && games[g.code].currentQ === idx)
       showResults(games[g.code]);
   }, (timeLimit + 1) * 1000);
+
+  // Notifier le display
+  io.to(`display:${g.code}`).emit('display:question', {
+    index: idx,
+    total: g.quiz.questions.length,
+    text: q.text,
+    image: q.image || null,
+    choices: q.choices,
+    type: q.type || 'qcm',
+    timeLimit,
+    doublePoints: q.doublePoints || false,
+    remaining: timeLimit,
+  });
 }
 
 function showResults(g) {
@@ -515,11 +581,24 @@ function showResults(g) {
   for (const sid of Object.keys(g.players)) {
     io.to(sid).emit('question:results', playerData);
   }
+
+  // Notifier le display avec données complètes
+  io.to(`display:${g.code}`).emit('display:results', {
+    correctIndexes,
+    counts,
+    leaderboard: buildLeaderboard(g),
+    type: q.type,
+    choices: q.choices,
+    explanation: q.explanation || null,
+    isLast: g.currentQ >= g.quiz.questions.length - 1,
+  });
 }
 
 function endGame(g) {
   g.state = 'ended';
-  io.to(`g:${g.code}`).emit('game:end', { leaderboard: buildLeaderboard(g) });
+  const lb = buildLeaderboard(g);
+  io.to(`g:${g.code}`).emit('game:end', { leaderboard: lb });
+  io.to(`display:${g.code}`).emit('display:end', { leaderboard: lb });
   if (g.qTimer) clearTimeout(g.qTimer);
   delete games[g.code];
   console.log(`[GAME] Partie ${g.code} terminée`);
@@ -540,7 +619,7 @@ function buildLeaderboard(g) {
 // ============================================================
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🎮 Kahoot Maison → http://localhost:${PORT}/admin.html`);
+  console.log(`⚡ Alertis Quiz   → http://localhost:${PORT}/admin.html`);
   console.log(`   Joueurs       → http://localhost:${PORT}/play.html`);
   console.log(`   Animateur     → http://localhost:${PORT}/animateur.html`);
 });

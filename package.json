@@ -1,5 +1,5 @@
 {
-  "name": "kahoot-maison",
+  "name": "alertis-quiz",
   "version": "1.0.0",
   "description": "Clone Kahoot auto-hébergé — quiz multijoueur temps réel",
   "main": "server.js",

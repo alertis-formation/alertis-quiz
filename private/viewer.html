@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Alertis Quiz — Consultation</title>
+<link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body>
+
+<nav>
+  <span class="logo">⚡ Alertis Quiz</span>
+  <span class="tab-btn active" style="pointer-events:none;">📚 Quiz (lecture seule)</span>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+    <button class="tab-btn" onclick="logout()" style="color:#ef4444;">🚪 Déconnexion</button>
+  </div>
+</nav>
+
+<div class="page active" id="page-quizzes">
+  <div class="klib-header">
+    <button class="klib-tab active">📚 Bibliothèque</button>
+    <div class="klib-search-wrap">
+      <span class="klib-search-icon">🔍</span>
+      <input type="text" id="quiz-search" class="klib-search" placeholder="Rechercher…" oninput="renderQuizList()" autocomplete="off" />
+    </div>
+    <select id="folder-filter" onchange="renderQuizList()" style="padding:8px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:.85rem;cursor:pointer;">
+      <option value="">Tous les dossiers</option>
+    </select>
+  </div>
+  <div style="background:var(--blue-lt);border:1.5px solid var(--blue-md);border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:.85rem;color:var(--blue-dk);font-weight:600;">
+    👁 Mode consultation — vous pouvez voir les quiz mais pas les modifier.
+  </div>
+  <div id="quiz-list"></div>
+</div>
+
+<script>
+let quizzes = [];
+
+const KGRADIENTS = [
+  'linear-gradient(135deg,#ef4444,#f97316)',
+  'linear-gradient(135deg,#6AA5E8,#8b5cf6)',
+  'linear-gradient(135deg,#10b981,#06b6d4)',
+  'linear-gradient(135deg,#f59e0b,#ef4444)',
+  'linear-gradient(135deg,#8b5cf6,#ec4899)',
+  'linear-gradient(135deg,#F97316,#6AA5E8)',
+  'linear-gradient(135deg,#06b6d4,#10b981)',
+  'linear-gradient(135deg,#3b82f6,#2A4E7A)',
+];
+const KICONS = ['🔥','🧠','⚡','🎯','🏆','💡','🚀','🎲','🎓','🌟'];
+function kGradient(t) { let h=0; for(const c of t) h=(h*31+c.charCodeAt(0))&0x7fffffff; return KGRADIENTS[h%KGRADIENTS.length]; }
+function kIcon(t) { let h=0; for(const c of t) h=(h*37+c.charCodeAt(0))&0x7fffffff; return KICONS[h%KICONS.length]; }
+function kThumb(quiz) {
+  if (quiz.image) return quiz.image;
+  for (const q of quiz.questions||[]) {
+    if (q.image) return q.image;
+    for (const c of q.choices||[]) { if (c&&c.image) return c.image; }
+  }
+  return null;
+}
+
+async function loadQuizzes() {
+  const res = await fetch('/api/quizzes');
+  quizzes = await res.json();
+  renderQuizList();
+}
+
+function renderQuizList() {
+  const el = document.getElementById('quiz-list');
+  const filterVal = document.getElementById('folder-filter').value;
+  const searchVal = (document.getElementById('quiz-search')?.value || '').toLowerCase().trim();
+
+  const folders = [...new Set(quizzes.map(q => q.folder || '').filter(f => f))].sort();
+  const filterSel = document.getElementById('folder-filter');
+  const currentFilter = filterSel.value;
+  filterSel.innerHTML = '<option value="">Tous les dossiers</option>' +
+    folders.map(f => `<option value="${esc(f)}" ${currentFilter===f?'selected':''}>${esc(f)}</option>`).join('');
+
+  let filtered = quizzes;
+  if (filterVal) filtered = filtered.filter(q => (q.folder||'') === filterVal);
+  if (searchVal) filtered = filtered.filter(q => q.title.toLowerCase().includes(searchVal));
+
+  if (filtered.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">📝</div><p>Aucun quiz disponible.</p></div>`;
+    return;
+  }
+
+  function renderCard(q) {
+    const thumb = kThumb(q);
+    const n = q.questions.length;
+    return `<div class="kcard" onclick="viewQuiz('${q.id}')">
+      <div class="kcard-thumb" style="background:${kGradient(q.title)}">
+        ${thumb ? `<img src="${esc(thumb)}" class="kcard-img" onerror="this.style.display='none'" />` : ''}
+        <div class="kcard-placeholder">${kIcon(q.title)}</div>
+        <span class="kcard-count">${n} question${n>1?'s':''}</span>
+      </div>
+      <div class="kcard-body">
+        <div class="kcard-title">${esc(q.title)}</div>
+        ${q.folder ? `<div class="kcard-folder">📁 ${esc(q.folder)}</div>` : ''}
+        <div class="kcard-date">${new Date(q.createdAt).toLocaleDateString('fr-FR')}</div>
+        <div class="kcard-actions" style="opacity:1;">
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();viewQuiz('${q.id}')">👁 Voir</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  const groups = {};
+  for (const q of filtered) { const f=q.folder||''; if(!groups[f]) groups[f]=[]; groups[f].push(q); }
+  const keys = Object.keys(groups).sort((a,b) => a===''?1:b===''?-1:a.localeCompare(b));
+
+  if (!searchVal && keys.length > 1) {
+    el.innerHTML = keys.map(f => `<div class="kfolder-section"><div class="kfolder-label">📁 ${esc(f||'Sans dossier')}</div><div class="kgrid">${groups[f].map(renderCard).join('')}</div></div>`).join('');
+  } else {
+    el.innerHTML = `<div class="kgrid">${filtered.map(renderCard).join('')}</div>`;
+  }
+}
+
+function viewQuiz(id) {
+  const q = quizzes.find(q => q.id === id);
+  if (!q) return;
+  const info = q.questions.map((qu, i) =>
+    `${i+1}. [${qu.type||'qcm'}] ${qu.text} (${qu.timeLimit||30}s)`
+  ).join('\n');
+  alert(`📋 ${q.title}\n\n${info}`);
+}
+
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function logout() {
+  await fetch('/api/logout', { method: 'POST' });
+  window.location.href = '/login.html';
+}
+
+loadQuizzes();
+</script>
+</body>
+</html>

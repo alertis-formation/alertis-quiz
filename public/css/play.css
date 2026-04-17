@@ -246,8 +246,27 @@ input[type="text"]:focus { outline: none; border-color: var(--blue-md); box-shad
 .lb-row-anim { animation: lb-slide .4s ease both; }
 
 /* ── Double Points Banner ─────────────────────────── */
-.double-pts-banner { text-align:center; font-size:1.3rem; font-weight:900; color:#F97316; padding:6px 0 2px; animation: pulse-once .6s ease; }
-@keyframes pulse-once { 0%{transform:scale(0.8);opacity:0} 60%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+.double-pts-banner {
+  text-align:center; font-size:1.4rem; font-weight:900; color:#fff;
+  background: linear-gradient(135deg, #F97316, #f59e0b);
+  border-radius: 12px; padding: 10px 16px;
+  box-shadow: 0 4px 20px rgba(249,115,22,.45);
+  animation: banner-pop .5s cubic-bezier(.22,.68,0,1.3) both;
+}
+@keyframes banner-pop {
+  0%  { transform: scale(0.6) translateY(-10px); opacity: 0; }
+  60% { transform: scale(1.08) translateY(0); }
+  100%{ transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* ── Multi Réponses Banner ────────────────────────── */
+.multi-banner {
+  text-align:center; font-size:1.4rem; font-weight:900; color:#fff;
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  border-radius: 12px; padding: 10px 16px;
+  box-shadow: 0 4px 20px rgba(139,92,246,.45);
+  animation: banner-pop .5s cubic-bezier(.22,.68,0,1.3) both;
+}
 
 /* ── Streak Badge ─────────────────────────────────── */
 .streak-badge { font-size:1.4rem; font-weight:900; color:#F97316; text-align:center; margin-top:4px; animation: badge-in .45s cubic-bezier(.22,.68,0,1.3) both; }
