@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/css/admin.css" />
 <link rel="stylesheet" href="/css/floaters.css" />
 <script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 </head>
 <body>
 
@@ -42,7 +43,10 @@
   <div id="quiz-list-view">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
       <h2 style="font-size:1.4rem;font-weight:800;">Mes Quiz</h2>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select id="folder-filter" onchange="renderQuizList()" style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:.85rem;cursor:pointer;">
+          <option value="">Tous les dossiers</option>
+        </select>
         <button class="btn btn-ghost" onclick="openImportModal()">📋 Importer du texte</button>
         <button class="btn btn-primary" onclick="newQuiz()">+ Nouveau quiz</button>
       </div>
@@ -90,6 +94,10 @@
         <label>Titre du quiz</label>
         <input type="text" id="quiz-title-input" placeholder="Ex: Culture générale S2" maxlength="80" />
       </div>
+      <div class="field">
+        <label>Dossier (optionnel)</label>
+        <input type="text" id="quiz-folder-input" placeholder="Ex: Formation incendie" maxlength="50" />
+      </div>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
       <div class="section-title" style="margin:0;">Questions</div>
@@ -114,6 +122,10 @@
         <select id="quiz-select">
           <option value="">— Sélectionner un quiz —</option>
         </select>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="blind-mode" style="width:auto;margin:0;" />
+        <label for="blind-mode" style="margin:0;text-transform:none;font-size:.9rem;cursor:pointer;">🙈 Mode aveugle (les joueurs ne voient pas le classement)</label>
       </div>
       <button class="btn btn-primary" onclick="createGame()">Créer la partie</button>
     </div>
@@ -154,8 +166,14 @@
       <div class="timer-num" id="q-timer">⏱ 20</div>
       <div class="q-text-big" id="q-text"></div>
       <div class="choices-display" id="q-choices-display"></div>
+      <!-- Open answers panel (affiché si type=open) -->
+      <div id="open-answers-panel" class="hidden" style="margin-top:12px;">
+        <div class="section-title" style="margin-bottom:8px;">✏️ Réponses des joueurs</div>
+        <div id="open-answers-list"></div>
+      </div>
       <div style="display:flex;gap:10px;margin-top:16px;">
         <button class="btn btn-red" onclick="stopQuestion()">⏹ Terminer la question</button>
+        <button class="btn btn-ghost" id="btn-pause" onclick="togglePause()">⏸ Pause</button>
       </div>
     </div>
   </div>
@@ -192,6 +210,7 @@ let quizzes = [];
 let editingQuiz = null;
 let currentGameCode = null;
 let timerInterval = null;
+let gamePaused = false;
 
 const socket = io();
 
@@ -211,23 +230,63 @@ async function loadQuizzes() {
 
 function renderQuizList() {
   const el = document.getElementById('quiz-list');
-  if (quizzes.length === 0) {
+  const filterVal = document.getElementById('folder-filter').value;
+
+  // Mettre à jour le filtre
+  const folders = [...new Set(quizzes.map(q => q.folder || '').filter(f => f))].sort();
+  const filterSel = document.getElementById('folder-filter');
+  const currentFilter = filterSel.value;
+  filterSel.innerHTML = '<option value="">Tous les dossiers</option>' +
+    folders.map(f => `<option value="${esc(f)}" ${currentFilter === f ? 'selected' : ''}>${esc(f)}</option>`).join('');
+
+  let filtered = quizzes;
+  if (filterVal) filtered = quizzes.filter(q => (q.folder || '') === filterVal);
+
+  if (filtered.length === 0) {
     el.innerHTML = `<div class="empty-state"><div class="big">📝</div><p>Aucun quiz pour l'instant.</p><p style="margin-top:8px;font-size:.85rem;">Créez votre premier quiz !</p></div>`;
     return;
   }
-  el.innerHTML = quizzes.map(q => `
-    <div class="quiz-card">
-      <div>
-        <div class="quiz-name">${esc(q.title)}</div>
-        <div class="quiz-meta">${q.questions.length} question(s) · Créé le ${new Date(q.createdAt).toLocaleDateString('fr-FR')}</div>
+
+  // Grouper par dossier
+  const groups = {};
+  for (const q of filtered) {
+    const folder = q.folder || '';
+    if (!groups[folder]) groups[folder] = [];
+    groups[folder].push(q);
+  }
+
+  const folderKeys = Object.keys(groups).sort((a, b) => {
+    if (a === '') return 1;
+    if (b === '') return -1;
+    return a.localeCompare(b);
+  });
+
+  let html = '';
+  for (const folder of folderKeys) {
+    const label = folder || 'Sans dossier';
+    html += `<div style="margin-bottom:8px;font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:4px 0;border-bottom:1px solid var(--border);">📁 ${esc(label)}</div>`;
+    html += groups[folder].map(q => `
+      <div class="quiz-card">
+        <div>
+          <div class="quiz-name">${esc(q.title)}</div>
+          <div class="quiz-meta">${q.questions.length} question(s) · Créé le ${new Date(q.createdAt).toLocaleDateString('fr-FR')}</div>
+        </div>
+        <div class="quiz-actions">
+          <button class="btn btn-ghost btn-sm" onclick="editQuiz('${q.id}')">✏️ Éditer</button>
+          <button class="btn btn-ghost btn-sm" onclick="duplicateQuiz('${q.id}')">📋 Dupliquer</button>
+          <button class="btn btn-primary btn-sm" onclick="launchQuiz('${q.id}')">▶ Lancer</button>
+          <button class="btn btn-red btn-sm" onclick="deleteQuiz('${q.id}')">🗑</button>
+        </div>
       </div>
-      <div class="quiz-actions">
-        <button class="btn btn-ghost btn-sm" onclick="editQuiz('${q.id}')">✏️ Éditer</button>
-        <button class="btn btn-primary btn-sm" onclick="launchQuiz('${q.id}')">▶ Lancer</button>
-        <button class="btn btn-red btn-sm" onclick="deleteQuiz('${q.id}')">🗑</button>
-      </div>
-    </div>
-  `).join('');
+    `).join('');
+  }
+  el.innerHTML = html;
+}
+
+async function duplicateQuiz(id) {
+  await fetch(`/api/quizzes/${id}/duplicate`, { method: 'POST' });
+  toast('Quiz dupliqué ✓', 'ok');
+  await loadQuizzes();
 }
 
 function loadQuizSelect() {
@@ -253,7 +312,7 @@ function launchQuiz(id) {
 }
 
 function newQuiz() {
-  editingQuiz = { id: null, title: '', questions: [] };
+  editingQuiz = { id: null, title: '', folder: '', questions: [] };
   openEditor('Nouveau quiz');
 }
 
@@ -268,6 +327,7 @@ function openEditor(title) {
   document.getElementById('editor').classList.add('open');
   document.getElementById('editor-title').textContent = title;
   document.getElementById('quiz-title-input').value = editingQuiz.title;
+  document.getElementById('quiz-folder-input').value = editingQuiz.folder || '';
   renderQuestionsList();
 }
 
@@ -282,7 +342,9 @@ function normalizeQ(q) {
   if (q.choices && q.choices.length > 0 && typeof q.choices[0] === 'string') {
     q.choices = q.choices.map(c => ({ text: c, image: '' }));
   }
-  if (!q.correctIndexes) {
+  if (q.type === 'poll' || q.type === 'open') {
+    q.correctIndexes = [];
+  } else if (!q.correctIndexes) {
     q.correctIndexes = (q.correctIndex !== undefined) ? [q.correctIndex] : [0];
   }
   return q;
@@ -304,34 +366,50 @@ function renderQuestionsList() {
     const correctIndexes = q.correctIndexes;
     const isVF = type === 'vrai_faux';
     const isMulti = type === 'multi';
+    const isPoll = type === 'poll';
+    const isOpen = type === 'open';
 
-    const choicesHtml = choices.map((c, ci) => {
-      const isCorrect = correctIndexes.includes(ci);
-      const inputCtrl = isMulti
-        ? `<input type="checkbox" class="correct-radio" value="${ci}" ${isCorrect?'checked':''} onchange="toggleCorrect(${qi},${ci},this.checked)" title="Bonne réponse" />`
-        : `<input type="radio" class="correct-radio" name="correct-${qi}" value="${ci}" ${isCorrect?'checked':''} onchange="editingQuiz.questions[${qi}].correctIndexes=[${ci}]" title="Bonne réponse" />`;
-      const removeBtn = (!isVF && choices.length > 2)
-        ? `<button class="btn btn-ghost btn-sm" style="padding:3px 8px;flex-shrink:0;" onclick="removeChoice(${qi},${ci})" title="Supprimer">✕</button>`
-        : '';
-      return `
-        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">
-          <div class="choice-dot" style="background:${colors[ci]||colors[5]};margin-top:8px;">${labels[ci]||ci+1}</div>
-          <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
-            <input type="text" value="${esc(c.text)}" placeholder="Réponse ${labels[ci]||ci+1}"
-              oninput="editingQuiz.questions[${qi}].choices[${ci}].text=this.value"
-              ${isVF?'readonly style="opacity:.6;cursor:default"':''} />
-            <input type="url" value="${esc(c.image||'')}" placeholder="URL image pour ce choix (optionnel)"
-              style="font-size:.8rem;"
-              oninput="editingQuiz.questions[${qi}].choices[${ci}].image=this.value" />
-          </div>
-          ${inputCtrl}
-          ${removeBtn}
-        </div>`;
-    }).join('');
+    let choicesHtml = '';
+    if (!isOpen) {
+      choicesHtml = choices.map((c, ci) => {
+        const isCorrect = correctIndexes.includes(ci);
+        let inputCtrl = '';
+        if (!isPoll) {
+          inputCtrl = isMulti
+            ? `<input type="checkbox" class="correct-radio" value="${ci}" ${isCorrect?'checked':''} onchange="toggleCorrect(${qi},${ci},this.checked)" title="Bonne réponse" />`
+            : `<input type="radio" class="correct-radio" name="correct-${qi}" value="${ci}" ${isCorrect?'checked':''} onchange="editingQuiz.questions[${qi}].correctIndexes=[${ci}]" title="Bonne réponse" />`;
+        }
+        const removeBtn = (!isVF && !isPoll && choices.length > 2)
+          ? `<button class="btn btn-ghost btn-sm" style="padding:3px 8px;flex-shrink:0;" onclick="removeChoice(${qi},${ci})" title="Supprimer">✕</button>`
+          : '';
+        return `
+          <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">
+            <div class="choice-dot" style="background:${colors[ci]||colors[5]};margin-top:8px;">${labels[ci]||ci+1}</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+              <input type="text" value="${esc(c.text)}" placeholder="Réponse ${labels[ci]||ci+1}"
+                oninput="editingQuiz.questions[${qi}].choices[${ci}].text=this.value"
+                ${isVF?'readonly style="opacity:.6;cursor:default"':''} />
+              <input type="url" value="${esc(c.image||'')}" placeholder="URL image pour ce choix (optionnel)"
+                style="font-size:.8rem;"
+                oninput="editingQuiz.questions[${qi}].choices[${ci}].image=this.value" />
+            </div>
+            ${inputCtrl}
+            ${removeBtn}
+          </div>`;
+      }).join('');
+    }
 
-    const addChoiceBtn = (!isVF && choices.length < 6)
+    const addChoiceBtn = (!isVF && !isPoll && !isOpen && choices.length < 6)
       ? `<button class="btn btn-ghost btn-sm" style="margin-top:4px;" onclick="addChoice(${qi})">+ Ajouter une réponse</button>`
       : '';
+
+    const choicesSection = isOpen
+      ? `<div style="color:var(--muted);font-size:.85rem;padding:8px 0;">Les joueurs tapent leur réponse librement. Vous validerez manuellement pendant la partie.</div>`
+      : `<div class="field">
+          <label>${isMulti ? 'Réponses — cochez toutes les bonnes réponses ✓' : isPoll ? 'Choix du sondage' : 'Réponses — cochez la bonne réponse ✓'}</label>
+          ${choicesHtml}
+          ${addChoiceBtn}
+        </div>`;
 
     return `
       <div class="question-item" id="q-item-${qi}">
@@ -350,6 +428,8 @@ function renderQuestionsList() {
             <button class="type-btn ${type==='qcm'?'active':''}" onclick="setQuestionType(${qi},'qcm')">📝 QCM</button>
             <button class="type-btn ${type==='vrai_faux'?'active':''}" onclick="setQuestionType(${qi},'vrai_faux')">✅ Vrai / Faux</button>
             <button class="type-btn ${type==='multi'?'active':''}" onclick="setQuestionType(${qi},'multi')">☑️ Plusieurs bonnes réponses</button>
+            <button class="type-btn ${type==='poll'?'active':''}" onclick="setQuestionType(${qi},'poll')">📊 Sondage</button>
+            <button class="type-btn ${type==='open'?'active':''}" onclick="setQuestionType(${qi},'open')">✏️ Texte libre</button>
           </div>
         </div>
 
@@ -366,12 +446,12 @@ function renderQuestionsList() {
             <label>Temps (secondes)</label>
             <input type="number" value="${q.timeLimit||20}" min="5" max="120" style="width:90px" oninput="editingQuiz.questions[${qi}].timeLimit=+this.value" />
           </div>
+          <div class="field" style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+            <input type="checkbox" id="dp-${qi}" ${q.doublePoints?'checked':''} onchange="editingQuiz.questions[${qi}].doublePoints=this.checked" style="width:auto;margin:0;" />
+            <label for="dp-${qi}" style="margin:0;text-transform:none;font-size:.85rem;cursor:pointer;">✨ Points x2 pour cette question</label>
+          </div>
         </div>
-        <div class="field">
-          <label>${isMulti ? 'Réponses — cochez toutes les bonnes réponses ✓' : 'Réponses — cochez la bonne réponse ✓'}</label>
-          ${choicesHtml}
-          ${addChoiceBtn}
-        </div>
+        ${choicesSection}
         <div class="field">
           <label>Explication après la réponse (optionnel)</label>
           <input type="text" value="${esc(q.explanation||'')}" placeholder="Explication..." oninput="editingQuiz.questions[${qi}].explanation=this.value" />
@@ -389,6 +469,16 @@ function setQuestionType(qi, type) {
     q.correctIndexes = [0];
   } else if (type === 'qcm' && q.correctIndexes.length > 1) {
     q.correctIndexes = [q.correctIndexes[0]];
+  } else if (type === 'poll' || type === 'open') {
+    q.correctIndexes = [];
+    if (type === 'open') {
+      q.choices = [];
+    } else if (!q.choices || q.choices.length < 2) {
+      q.choices = [
+        { text: '', image: '' }, { text: '', image: '' },
+        { text: '', image: '' }, { text: '', image: '' }
+      ];
+    }
   }
   renderQuestionsList();
 }
@@ -426,7 +516,7 @@ function addQuestion() {
   editingQuiz.questions.push({
     text: '', type: 'qcm',
     choices: [{ text: '', image: '' }, { text: '', image: '' }, { text: '', image: '' }, { text: '', image: '' }],
-    correctIndexes: [0], timeLimit: 20, image: '', explanation: ''
+    correctIndexes: [0], timeLimit: 20, image: '', explanation: '', doublePoints: false
   });
   renderQuestionsList();
   setTimeout(() => {
@@ -451,15 +541,18 @@ function moveQ(idx, dir) {
 async function saveQuiz() {
   const title = document.getElementById('quiz-title-input').value.trim();
   if (!title) return toast('Titre requis', 'err');
+  editingQuiz.folder = document.getElementById('quiz-folder-input').value.trim();
   for (const [i, q] of editingQuiz.questions.entries()) {
     normalizeQ(q);
     if (!q.text.trim()) return toast(`Question ${i+1} : énoncé vide`, 'err');
-    for (const [ci, c] of q.choices.entries()) {
-      if (!c.text.trim() && !c.image.trim())
-        return toast(`Question ${i+1} : la réponse ${ci+1} doit avoir un texte ou une image`, 'err');
+    if (q.type !== 'open') {
+      for (const [ci, c] of q.choices.entries()) {
+        if (!c.text.trim() && !c.image.trim())
+          return toast(`Question ${i+1} : la réponse ${ci+1} doit avoir un texte ou une image`, 'err');
+      }
+      if (q.type !== 'poll' && (!q.correctIndexes || q.correctIndexes.length === 0))
+        return toast(`Question ${i+1} : aucune bonne réponse sélectionnée`, 'err');
     }
-    if (!q.correctIndexes || q.correctIndexes.length === 0)
-      return toast(`Question ${i+1} : aucune bonne réponse sélectionnée`, 'err');
     // Nettoyer l'ancien champ
     delete q.correctIndex;
   }
@@ -475,7 +568,8 @@ async function saveQuiz() {
 function createGame() {
   const quizId = document.getElementById('quiz-select').value;
   if (!quizId) return toast('Sélectionne un quiz', 'err');
-  socket.emit('admin:create', { quizId });
+  const blindMode = document.getElementById('blind-mode').checked;
+  socket.emit('admin:create', { quizId, blindMode });
 }
 
 socket.on('admin:created', async ({ code }) => {
@@ -508,10 +602,24 @@ function startGame() { socket.emit('admin:start', { code: currentGameCode }); }
 
 socket.on('question:start', data => {
   Audio.startMusic();
+  gamePaused = false;
+  document.getElementById('btn-pause').textContent = '⏸ Pause';
   showPanel('question');
   document.getElementById('q-counter').textContent = `Question ${data.index + 1}/${data.total}`;
   document.getElementById('q-text').textContent = data.text;
   document.getElementById('q-answers-progress').textContent = `0/? réponses`;
+
+  // Panel réponses ouvertes
+  const openPanel = document.getElementById('open-answers-panel');
+  const openList = document.getElementById('open-answers-list');
+  if (data.type === 'open') {
+    openPanel.classList.remove('hidden');
+    openList.innerHTML = '<div style="color:var(--muted);font-size:.85rem;">En attente des réponses…</div>';
+  } else {
+    openPanel.classList.add('hidden');
+    openList.innerHTML = '';
+  }
+
   const colorClasses = ['c0','c1','c2','c3','c4','c5'];
   const labels = ['🔴','🔵','🟢','🟡','🟣','🩵'];
   document.getElementById('q-choices-display').innerHTML = data.choices.map((c, i) => {
@@ -534,46 +642,118 @@ socket.on('question:start', data => {
   window._qData = data;
 });
 
+// Réponses texte libre reçues de l'admin
+socket.on('open:answer', ({ playerId, name, text }) => {
+  const openList = document.getElementById('open-answers-list');
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--card2);border-radius:8px;margin-bottom:6px;';
+  div.innerHTML = `
+    <span style="font-weight:700;flex:0 0 auto;">${esc(name)}</span>
+    <span style="flex:1;color:var(--text);">${esc(text)}</span>
+    <button class="btn btn-green btn-sm" style="flex-shrink:0;" onclick="validateOpen('${playerId}', 500, this)">✓ +500pts</button>
+    <button class="btn btn-ghost btn-sm" style="flex-shrink:0;" onclick="validateOpen('${playerId}', 0, this)">✕ 0pt</button>
+  `;
+  // Remplacer placeholder si présent
+  const placeholder = openList.querySelector('div[style*="muted"]');
+  if (placeholder) placeholder.remove();
+  openList.appendChild(div);
+});
+
+function validateOpen(playerId, pts, btn) {
+  socket.emit('admin:validate-open', { code: currentGameCode, playerId, points: pts });
+  btn.parentElement.style.opacity = '0.5';
+  btn.parentElement.querySelectorAll('button').forEach(b => b.disabled = true);
+}
+
 socket.on('answers:progress', ({ answered, total }) => {
   document.getElementById('q-answers-progress').textContent = `${answered}/${total} réponses`;
 });
 
 function stopQuestion() { socket.emit('admin:stop-q', { code: currentGameCode }); }
 
+// Pause / Reprise
+function togglePause() {
+  if (!gamePaused) {
+    socket.emit('admin:pause', { code: currentGameCode });
+  } else {
+    socket.emit('admin:resume', { code: currentGameCode });
+  }
+}
+
+socket.on('game:paused', ({ remaining }) => {
+  gamePaused = true;
+  if (timerInterval) clearInterval(timerInterval);
+  document.getElementById('btn-pause').textContent = '▶ Reprendre';
+  document.getElementById('q-timer').textContent = `⏸ ${remaining}`;
+});
+
+socket.on('game:resumed', ({ remaining }) => {
+  gamePaused = false;
+  document.getElementById('btn-pause').textContent = '⏸ Pause';
+  const data = window._qData;
+  let t = remaining;
+  document.getElementById('q-timer').textContent = `⏱ ${t}`;
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    t--;
+    document.getElementById('q-timer').textContent = `⏱ ${Math.max(0, t)}`;
+    document.getElementById('q-progress-bar').style.width = Math.max(0, t / (data?.timeLimit||20) * 100) + '%';
+    if (t <= 0) clearInterval(timerInterval);
+  }, 1000);
+});
+
 socket.on('question:results', data => {
   if (timerInterval) clearInterval(timerInterval);
   showPanel('results');
   const q = window._qData;
   const colors = ['var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)','var(--c6)'];
-  const correctIndexes = data.correctIndexes || (data.correctIndex !== undefined ? [data.correctIndex] : [0]);
-  const maxCount = Math.max(...data.counts, 1);
+  const correctIndexes = data.correctIndexes || [];
+  const maxCount = Math.max(...(data.counts || [0]), 1);
 
-  const correctTexts = correctIndexes.map(ci => {
-    if (!q || !q.choices[ci]) return `Choix ${ci+1}`;
-    const c = q.choices[ci];
-    return typeof c === 'string' ? c : (c.text || `Choix ${ci+1}`);
-  });
-  document.getElementById('results-title').textContent =
-    `✅ Bonne${correctIndexes.length > 1 ? 's' : ''} réponse${correctIndexes.length > 1 ? 's' : ''} : ${correctTexts.map(t => esc(t)).join(', ')}`;
+  const isPoll = data.type === 'poll';
+  const isOpen = data.type === 'open';
 
-  document.getElementById('answer-bars').innerHTML = (q ? q.choices : []).map((c, i) => {
-    const ch = typeof c === 'string' ? { text: c, image: '' } : c;
-    const isCorrect = correctIndexes.includes(i);
-    const count = data.counts[i] || 0;
-    const pct = Math.round(count / maxCount * 100);
-    const labelContent = ch.image
-      ? `<img src="${esc(ch.image)}" style="max-height:20px;border-radius:3px;vertical-align:middle;"> ${esc(ch.text)}`
-      : esc(ch.text);
-    return `<div class="answer-bar">
-      <div class="answer-bar-label" title="${esc(ch.text)}">${labelContent}</div>
-      <div class="answer-bar-fill" style="background:${colors[i]||colors[5]};width:${pct}%;border:${isCorrect?'2px solid #fff':'none'}">${isCorrect?'✓':''}</div>
-      <div class="answer-bar-count">${count}</div>
-    </div>`;
-  }).join('');
+  if (isPoll) {
+    document.getElementById('results-title').textContent = '📊 Résultats du sondage';
+  } else if (isOpen) {
+    document.getElementById('results-title').textContent = '✏️ Réponses libres';
+  } else {
+    const correctTexts = correctIndexes.map(ci => {
+      if (!q || !q.choices[ci]) return `Choix ${ci+1}`;
+      const c = q.choices[ci];
+      return typeof c === 'string' ? c : (c.text || `Choix ${ci+1}`);
+    });
+    document.getElementById('results-title').textContent =
+      `✅ Bonne${correctIndexes.length > 1 ? 's' : ''} réponse${correctIndexes.length > 1 ? 's' : ''} : ${correctTexts.map(t => esc(t)).join(', ')}`;
+  }
+
+  if (isOpen) {
+    // Afficher les réponses ouvertes
+    const openAnswers = data.openAnswers || [];
+    document.getElementById('answer-bars').innerHTML = openAnswers.length === 0
+      ? '<div style="color:var(--muted);">Aucune réponse reçue.</div>'
+      : openAnswers.map(a => `<div style="padding:4px 0;border-bottom:1px solid var(--border);"><strong>${esc(a.name)}</strong> : ${esc(a.text)}</div>`).join('');
+  } else {
+    document.getElementById('answer-bars').innerHTML = (q ? q.choices : []).map((c, i) => {
+      const ch = typeof c === 'string' ? { text: c, image: '' } : c;
+      const isCorrect = correctIndexes.includes(i);
+      const count = (data.counts || [])[i] || 0;
+      const pct = Math.round(count / maxCount * 100);
+      const labelContent = ch.image
+        ? `<img src="${esc(ch.image)}" style="max-height:20px;border-radius:3px;vertical-align:middle;"> ${esc(ch.text)}`
+        : esc(ch.text);
+      return `<div class="answer-bar">
+        <div class="answer-bar-label" title="${esc(ch.text)}">${labelContent}</div>
+        <div class="answer-bar-fill" style="background:${colors[i]||colors[5]};width:${pct}%;border:${(!isPoll && isCorrect)?'2px solid #fff':'none'}">${(!isPoll && isCorrect)?'✓':''}</div>
+        <div class="answer-bar-count">${count}</div>
+      </div>`;
+    }).join('');
+  }
+
   const expBox = document.getElementById('explanation-box');
   if (data.explanation) { expBox.textContent = '💡 ' + data.explanation; expBox.classList.remove('hidden'); }
   else expBox.classList.add('hidden');
-  document.getElementById('results-leaderboard').innerHTML = data.leaderboard.slice(0,5).map(p =>
+  document.getElementById('results-leaderboard').innerHTML = (data.leaderboard || []).slice(0,5).map(p =>
     `<li class="lb-row"><span class="lb-rank">${['🥇','🥈','🥉'][p.rank-1]||'#'+p.rank}</span><span class="lb-name">${esc(p.name)}</span><span class="lb-score">${p.score.toLocaleString('fr-FR')} pts</span></li>`
   ).join('');
   document.getElementById('btn-next').textContent = data.isLast ? '🏁 Voir le classement final' : 'Suivant ▶';
@@ -586,12 +766,15 @@ socket.on('game:end', ({ leaderboard }) => {
   Audio.stopMusic();
   Audio.endGame();
   showPanel('end');
+  setTimeout(() => {
+    confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 }, colors: ['#F97316','#6AA5E8','#10b981','#f59e0b'] });
+  }, 300);
   document.getElementById('end-leaderboard').innerHTML = leaderboard.slice(0,10).map(p =>
     `<li class="lb-row"><span class="lb-rank">${['🥇','🥈','🥉'][p.rank-1]||'#'+p.rank}</span><span class="lb-name">${esc(p.name)}</span><span class="lb-score">${p.score.toLocaleString('fr-FR')} pts</span></li>`
   ).join('');
 });
 
-function resetGame() { currentGameCode = null; showPanel('setup'); loadQuizSelect(); }
+function resetGame() { currentGameCode = null; gamePaused = false; showPanel('setup'); loadQuizSelect(); }
 socket.on('error', msg => toast(msg, 'err'));
 
 function showPanel(name) {
@@ -632,7 +815,6 @@ function parseQuizText(text) {
   let i = 0;
 
   while (i < lines.length) {
-    // Cherche un en-tête de question : "1. Quiz" ou "2. Vrai ou faux" etc.
     const header = lines[i].match(/^\d+\.\s*(.+)/);
     if (!header) { i++; continue; }
 
@@ -642,14 +824,12 @@ function parseQuizText(text) {
     else if (typeRaw.includes('multi')) type = 'multi';
     i++;
 
-    // Collecter texte de la question + réponses
     let questionText = '';
     const choices = [];
     const correctIndexes = [];
 
     while (i < lines.length) {
       const line = lines[i];
-      // Nouvel en-tête = fin du bloc courant
       if (/^\d+\.\s/.test(line)) break;
 
       const ok  = line.match(/^✅\s*(.*)/);
@@ -668,7 +848,6 @@ function parseQuizText(text) {
 
     if (!questionText.trim() || choices.length === 0) continue;
 
-    // Affiner le type selon les données réelles
     if (correctIndexes.length > 1) type = 'multi';
     if (type === 'vrai_faux' ||
         (choices.length === 2 &&
@@ -685,6 +864,7 @@ function parseQuizText(text) {
       timeLimit: 20,
       image: '',
       explanation: '',
+      doublePoints: false,
     });
   }
 
@@ -723,26 +903,10 @@ const Audio = (() => {
   let beatCount = 0, nextBeatTime = 0;
   let trackIdx = 0;
 
-  // ── 3 pistes différentes ─────────────────────────────────────
   const TRACKS = [
-    { // Piste 1 : Electro (BPM 126) — ambiance quiz classique
-      bpm: 126,
-      kick:  [0, 8],
-      snare: [4, 12],
-      bass:  [98,0,0,0,110,0,0,0,98,0,0,116,110,0,0,0],
-    },
-    { // Piste 2 : Groove funky (BPM 106) — plus décontracté
-      bpm: 106,
-      kick:  [0, 3, 8, 11],
-      snare: [4, 12],
-      bass:  [87,0,0,87,0,0,98,0,87,0,0,0,98,0,87,0],
-    },
-    { // Piste 3 : Techno rapide (BPM 138) — ambiance finale intense
-      bpm: 138,
-      kick:  [0, 4, 8, 12],
-      snare: [4, 12],
-      bass:  [110,0,110,0,0,0,123,0,110,0,0,0,116,0,0,0],
-    },
+    { bpm: 126, kick:  [0, 8],        snare: [4, 12], bass:  [98,0,0,0,110,0,0,0,98,0,0,116,110,0,0,0] },
+    { bpm: 106, kick:  [0, 3, 8, 11], snare: [4, 12], bass:  [87,0,0,87,0,0,98,0,87,0,0,0,98,0,87,0]   },
+    { bpm: 138, kick:  [0, 4, 8, 12], snare: [4, 12], bass:  [110,0,110,0,0,0,123,0,110,0,0,0,116,0,0,0] },
   ];
 
   function init() {
@@ -805,7 +969,7 @@ const Audio = (() => {
 
   function startMusic() {
     if (!musicOn||loopRunning) return;
-    trackIdx = (trackIdx + 1) % TRACKS.length; // piste suivante à chaque partie
+    trackIdx = (trackIdx + 1) % TRACKS.length;
     init(); loopRunning=true; beatCount=0;
     nextBeatTime=ctx.currentTime+0.1; scheduleLoop();
   }
