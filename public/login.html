@@ -70,7 +70,7 @@ async function login() {
     });
     const data = await res.json();
     if (res.ok) {
-      const dest = data.role === 'animateur' ? '/animateur.html' : '/admin.html';
+      const dest = data.role === 'animateur' ? '/animateur' : '/admin';
       window.location.href = dest;
     }
     else { err.textContent = data.error || 'Erreur de connexion'; btn.disabled = false; btn.textContent = 'Se connecter'; }
