@@ -28,7 +28,8 @@
 
 <nav>
   <span class="logo">⚡ Alertis Quiz</span>
-  <span class="tab-btn" style="cursor:default;opacity:.7;">🎭 Mode Animateur</span>
+  <button class="tab-btn active" id="tab-library" onclick="showTab('library')">📚 Mes Quiz</button>
+  <button class="tab-btn" id="tab-game" onclick="goToGame()">🚀 Lancer une partie</button>
   <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
     <button id="btn-music" onclick="toggleMusic()" title="Musique de fond" class="tab-btn" style="font-size:.95rem;">🎵</button>
     <button id="btn-sfx" onclick="toggleSfx()" title="Effets sonores" class="tab-btn" style="font-size:.95rem;">🔊</button>
@@ -36,25 +37,41 @@
   </div>
 </nav>
 
-<!-- PAGE : PARTIE EN COURS (seule page disponible) -->
-<div class="page active" id="page-game">
+<!-- PAGE : BIBLIOTHÈQUE -->
+<div class="page active" id="page-library">
+  <div class="klib-header">
+    <button class="klib-tab active">📚 Bibliothèque</button>
+    <div class="klib-search-wrap">
+      <span class="klib-search-icon">🔍</span>
+      <input type="text" id="quiz-search" class="klib-search" placeholder="Rechercher dans la bibliothèque…" oninput="renderQuizList()" autocomplete="off" />
+    </div>
+    <select id="folder-filter" onchange="renderQuizList()" style="padding:8px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:.85rem;cursor:pointer;">
+      <option value="">Tous les dossiers</option>
+    </select>
+  </div>
+  <div id="quiz-list"></div>
+</div>
 
-  <div id="panel-setup" style="display:block;">
-    <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:20px;">🚀 Lancer une partie</h2>
-    <div class="card">
-      <div class="field">
-        <label>Choisir un quiz</label>
-        <select id="quiz-select">
-          <option value="">— Sélectionner un quiz —</option>
-        </select>
-      </div>
-      <div class="field" style="display:flex;align-items:center;gap:8px;">
-        <input type="checkbox" id="blind-mode" style="width:auto;margin:0;" />
-        <label for="blind-mode" style="margin:0;text-transform:none;font-size:.9rem;cursor:pointer;">🙈 Mode aveugle (les joueurs ne voient pas le classement)</label>
-      </div>
-      <button class="btn btn-primary" onclick="createGame()">Créer la partie</button>
+<!-- MODAL LANCER -->
+<div class="modal-overlay hidden" id="launch-modal">
+  <div class="modal-box" style="max-width:400px;gap:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="font-size:1.1rem;font-weight:800;" id="launch-modal-title">Lancer le quiz</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeLaunchModal()">✕</button>
+    </div>
+    <div class="field" style="display:flex;align-items:center;gap:8px;margin:0;">
+      <input type="checkbox" id="blind-mode" style="width:auto;margin:0;" />
+      <label for="blind-mode" style="margin:0;text-transform:none;font-size:.9rem;cursor:pointer;">🙈 Mode aveugle (les joueurs ne voient pas le classement)</label>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeLaunchModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="confirmLaunch()">▶ Lancer la partie</button>
     </div>
   </div>
+</div>
+
+<!-- PAGE : PARTIE EN COURS -->
+<div class="page" id="page-game">
 
   <div id="panel-waiting">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
@@ -63,8 +80,9 @@
         <div class="code-display" id="game-code-display">------</div>
         <div class="qr-wrap"><img id="qr-img" src="" alt="QR Code" width="200" /></div>
         <div class="join-url" id="join-url"></div>
-        <div style="text-align:center;margin-top:12px;">
+        <div style="text-align:center;margin-top:12px;display:flex;gap:8px;justify-content:center;">
           <button class="btn btn-ghost btn-sm" onclick="copyJoinUrl()">📋 Copier le lien</button>
+          <button class="btn btn-ghost btn-sm" onclick="openDisplay()">📺 Affichage</button>
         </div>
       </div>
       <div class="card">
@@ -83,15 +101,18 @@
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <span class="stat-pill" id="q-counter">Question 1/1</span>
-        <span class="stat-pill" id="q-answers-progress">0/0 réponses</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="stat-pill" id="q-answers-progress">0/0 réponses</span>
+          <button class="btn btn-ghost btn-sm" onclick="openDisplay()" title="Ouvrir l'affichage">📺</button>
+        </div>
       </div>
       <div class="progress-bar-wrap">
         <div class="progress-bar" id="q-progress-bar" style="width:0%"></div>
       </div>
       <div class="timer-num" id="q-timer">⏱ 30</div>
       <div class="q-text-big" id="q-text"></div>
+      <img id="q-question-img" src="" alt="" class="hidden" style="max-height:180px;border-radius:12px;margin:8px auto 0;display:block;object-fit:cover;" />
       <div class="choices-display" id="q-choices-display"></div>
-      <!-- Open answers panel -->
       <div id="open-answers-panel" class="hidden" style="margin-top:12px;">
         <div class="section-title" style="margin-bottom:8px;">✏️ Réponses des joueurs</div>
         <div id="open-answers-list"></div>
@@ -133,33 +154,134 @@
 <script>
 let quizzes = [];
 let currentGameCode = null;
+let pendingQuizId = null;
 let timerInterval = null;
 let gamePaused = false;
 
 const socket = io();
 
+// ── Helpers ─────────────────────────────────────────
+const KGRADIENTS = [
+  'linear-gradient(135deg,#ef4444,#f97316)',
+  'linear-gradient(135deg,#6AA5E8,#8b5cf6)',
+  'linear-gradient(135deg,#10b981,#06b6d4)',
+  'linear-gradient(135deg,#f59e0b,#ef4444)',
+  'linear-gradient(135deg,#8b5cf6,#ec4899)',
+  'linear-gradient(135deg,#F97316,#6AA5E8)',
+  'linear-gradient(135deg,#06b6d4,#10b981)',
+  'linear-gradient(135deg,#3b82f6,#2A4E7A)',
+];
+const KICONS = ['🔥','🧠','⚡','🎯','🏆','💡','🚀','🎲','🎓','🌟'];
+function kGradient(t) { let h=0; for(const c of t) h=(h*31+c.charCodeAt(0))&0x7fffffff; return KGRADIENTS[h%KGRADIENTS.length]; }
+function kIcon(t) { let h=0; for(const c of t) h=(h*37+c.charCodeAt(0))&0x7fffffff; return KICONS[h%KICONS.length]; }
+function kThumb(quiz) {
+  if (quiz.image) return quiz.image;
+  for (const q of quiz.questions||[]) {
+    if (q.image) return q.image;
+    for (const c of q.choices||[]) { if (c&&c.image) return c.image; }
+  }
+  return null;
+}
+
+// ── Navigation ───────────────────────────────────────
+function goToGame() {
+  if (!currentGameCode) { showTab('library'); toast('Lance d\'abord une partie depuis la bibliothèque.', 'err'); return; }
+  showTab('game');
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`page-${tab}`).classList.add('active');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+}
+
+// ── Chargement et affichage des quiz ─────────────────
 async function loadQuizzes() {
   const res = await fetch('/api/quizzes');
   quizzes = await res.json();
-  loadQuizSelect();
+  renderQuizList();
 }
 
-function loadQuizSelect() {
-  const sel = document.getElementById('quiz-select');
-  sel.innerHTML = '<option value="">— Sélectionner un quiz —</option>' +
-    quizzes.map(q => `<option value="${q.id}">${esc(q.title)} (${q.questions.length} questions)</option>`).join('');
+function renderQuizList() {
+  const el = document.getElementById('quiz-list');
+  const filterVal = document.getElementById('folder-filter').value;
+  const searchVal = (document.getElementById('quiz-search')?.value || '').toLowerCase().trim();
+
+  const folders = [...new Set(quizzes.map(q => q.folder||'').filter(f=>f))].sort();
+  const filterSel = document.getElementById('folder-filter');
+  const currentFilter = filterSel.value;
+  filterSel.innerHTML = '<option value="">Tous les dossiers</option>' +
+    folders.map(f => `<option value="${esc(f)}" ${currentFilter===f?'selected':''}>${esc(f)}</option>`).join('');
+
+  let filtered = quizzes;
+  if (filterVal) filtered = filtered.filter(q => (q.folder||'') === filterVal);
+  if (searchVal) filtered = filtered.filter(q =>
+    q.title.toLowerCase().includes(searchVal) || (q.folder||'').toLowerCase().includes(searchVal)
+  );
+
+  if (filtered.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="big">📝</div><p>${searchVal ? 'Aucun quiz ne correspond.' : 'Aucun quiz disponible.'}</p></div>`;
+    return;
+  }
+
+  function renderCard(q) {
+    const thumb = kThumb(q);
+    const n = q.questions.length;
+    const date = new Date(q.createdAt).toLocaleDateString('fr-FR');
+    return `<div class="kcard">
+      <div class="kcard-thumb" style="background:${kGradient(q.title)}">
+        ${thumb ? `<img src="${esc(thumb)}" class="kcard-img" onerror="this.style.display='none'" />` : ''}
+        <div class="kcard-placeholder">${kIcon(q.title)}</div>
+        <span class="kcard-count">${n} question${n>1?'s':''}</span>
+      </div>
+      <div class="kcard-body">
+        <div class="kcard-title">${esc(q.title)}</div>
+        ${q.folder ? `<div class="kcard-folder">📁 ${esc(q.folder)}</div>` : ''}
+        <div class="kcard-date">${date}</div>
+        <div class="kcard-actions">
+          <button class="btn btn-primary btn-sm" style="width:100%;" onclick="event.stopPropagation();openLaunchModal('${q.id}','${esc(q.title)}')">▶ Lancer</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  const groups = {};
+  for (const q of filtered) { const f=q.folder||''; if(!groups[f]) groups[f]=[]; groups[f].push(q); }
+  const keys = Object.keys(groups).sort((a,b) => a===''?1:b===''?-1:a.localeCompare(b));
+
+  if (!searchVal && keys.length > 1) {
+    el.innerHTML = keys.map(f =>
+      `<div class="kfolder-section"><div class="kfolder-label">📁 ${esc(f||'Sans dossier')}</div><div class="kgrid">${groups[f].map(renderCard).join('')}</div></div>`
+    ).join('');
+  } else {
+    el.innerHTML = `<div class="kgrid">${filtered.map(renderCard).join('')}</div>`;
+  }
 }
 
-function createGame() {
-  const quizId = document.getElementById('quiz-select').value;
-  if (!quizId) return toast('Sélectionne un quiz', 'err');
+// ── Modal de lancement ───────────────────────────────
+function openLaunchModal(id, title) {
+  pendingQuizId = id;
+  document.getElementById('launch-modal-title').textContent = `▶ ${title}`;
+  document.getElementById('blind-mode').checked = false;
+  document.getElementById('launch-modal').classList.remove('hidden');
+}
+function closeLaunchModal() {
+  document.getElementById('launch-modal').classList.add('hidden');
+  pendingQuizId = null;
+}
+function confirmLaunch() {
+  if (!pendingQuizId) return;
   const blindMode = document.getElementById('blind-mode').checked;
-  socket.emit('admin:create', { quizId, blindMode });
+  socket.emit('admin:create', { quizId: pendingQuizId, blindMode });
+  closeLaunchModal();
 }
 
+// ── Création de la partie ────────────────────────────
 socket.on('admin:created', async ({ code }) => {
   currentGameCode = code;
   document.getElementById('game-code-display').textContent = code;
+  showTab('game');
   showPanel('waiting');
   const res = await fetch(`/api/qr/${code}`);
   const data = await res.json();
@@ -172,11 +294,15 @@ function copyJoinUrl() {
   navigator.clipboard.writeText(window._joinUrl || '');
   toast('Lien copié !', 'ok');
 }
+function openDisplay() {
+  if (!currentGameCode) return;
+  window.open(`/display.html?code=${currentGameCode}`, '_blank', 'width=1280,height=720,menubar=no,toolbar=no');
+}
 
 socket.on('players:update', players => {
-  document.getElementById('players-grid').innerHTML = players.map(p => `
-    <div class="player-chip">${esc(p.name)}<button onclick="kickPlayer('${p.id}')" title="Expulser">✕</button></div>
-  `).join('');
+  document.getElementById('players-grid').innerHTML = players.map(p =>
+    `<div class="player-chip">${esc(p.name)}<button onclick="kickPlayer('${p.id}')" title="Expulser">✕</button></div>`
+  ).join('');
   const count = players.length;
   document.getElementById('player-count').textContent = `${count} joueur(s)`;
   document.getElementById('btn-start').disabled = count === 0;
@@ -194,7 +320,10 @@ socket.on('question:start', data => {
   document.getElementById('q-text').textContent = data.text;
   document.getElementById('q-answers-progress').textContent = `0/? réponses`;
 
-  // Panel réponses ouvertes
+  const qImg = document.getElementById('q-question-img');
+  if (data.image) { qImg.src = data.image; qImg.classList.remove('hidden'); }
+  else qImg.classList.add('hidden');
+
   const openPanel = document.getElementById('open-answers-panel');
   const openList = document.getElementById('open-answers-list');
   if (data.type === 'open') {
@@ -212,8 +341,9 @@ socket.on('question:start', data => {
     const content = ch.image
       ? `<img src="${esc(ch.image)}" class="choice-img-preview" /> ${esc(ch.text)}`
       : esc(ch.text);
-    return `<div class="choice-box ${colorClasses[i] || 'c0'}">${labels[i] || (i+1)} ${content}</div>`;
+    return `<div class="choice-box ${colorClasses[i]||'c0'}">${labels[i]||(i+1)} ${content}</div>`;
   }).join('');
+
   if (timerInterval) clearInterval(timerInterval);
   let t = data.timeLimit;
   document.getElementById('q-timer').textContent = `⏱ ${t}`;
@@ -255,11 +385,8 @@ socket.on('answers:progress', ({ answered, total }) => {
 function stopQuestion() { socket.emit('admin:stop-q', { code: currentGameCode }); }
 
 function togglePause() {
-  if (!gamePaused) {
-    socket.emit('admin:pause', { code: currentGameCode });
-  } else {
-    socket.emit('admin:resume', { code: currentGameCode });
-  }
+  if (!gamePaused) socket.emit('admin:pause', { code: currentGameCode });
+  else socket.emit('admin:resume', { code: currentGameCode });
 }
 
 socket.on('game:paused', ({ remaining }) => {
@@ -294,18 +421,16 @@ socket.on('question:results', data => {
   const isPoll = data.type === 'poll';
   const isOpen = data.type === 'open';
 
-  if (isPoll) {
-    document.getElementById('results-title').textContent = '📊 Résultats du sondage';
-  } else if (isOpen) {
-    document.getElementById('results-title').textContent = '✏️ Réponses libres';
-  } else {
+  if (isPoll) document.getElementById('results-title').textContent = '📊 Résultats du sondage';
+  else if (isOpen) document.getElementById('results-title').textContent = '✏️ Réponses libres';
+  else {
     const correctTexts = correctIndexes.map(ci => {
       if (!q || !q.choices[ci]) return `Choix ${ci+1}`;
       const c = q.choices[ci];
       return typeof c === 'string' ? c : (c.text || `Choix ${ci+1}`);
     });
     document.getElementById('results-title').textContent =
-      `✅ Bonne${correctIndexes.length > 1 ? 's' : ''} réponse${correctIndexes.length > 1 ? 's' : ''} : ${correctTexts.map(t => esc(t)).join(', ')}`;
+      `✅ Bonne${correctIndexes.length>1?'s':''} réponse${correctIndexes.length>1?'s':''} : ${correctTexts.map(t=>esc(t)).join(', ')}`;
   }
 
   if (isOpen) {
@@ -324,7 +449,7 @@ socket.on('question:results', data => {
         : esc(ch.text);
       return `<div class="answer-bar">
         <div class="answer-bar-label" title="${esc(ch.text)}">${labelContent}</div>
-        <div class="answer-bar-fill" style="background:${colors[i]||colors[5]};width:${pct}%;border:${(!isPoll && isCorrect)?'2px solid #fff':'none'}">${(!isPoll && isCorrect)?'✓':''}</div>
+        <div class="answer-bar-fill" style="background:${colors[i]||colors[5]};width:${pct}%;border:${(!isPoll&&isCorrect)?'2px solid #fff':'none'}">${(!isPoll&&isCorrect)?'✓':''}</div>
         <div class="answer-bar-count">${count}</div>
       </div>`;
     }).join('');
@@ -354,11 +479,15 @@ socket.on('game:end', ({ leaderboard }) => {
   ).join('');
 });
 
-function resetGame() { currentGameCode = null; gamePaused = false; showPanel('setup'); loadQuizSelect(); }
+function resetGame() {
+  currentGameCode = null; gamePaused = false;
+  showTab('library');
+}
+
 socket.on('error', msg => toast(msg, 'err'));
 
 function showPanel(name) {
-  ['setup','waiting','question','results','end'].forEach(p => document.getElementById(`panel-${p}`).style.display = 'none');
+  ['waiting','question','results','end'].forEach(p => document.getElementById(`panel-${p}`).style.display = 'none');
   document.getElementById(`panel-${name}`).style.display = 'block';
 }
 
@@ -379,114 +508,57 @@ async function logout() {
   window.location.href = '/login.html';
 }
 
-// ── Moteur Audio ─────────────────────────────────────────────
+// ── Moteur Audio ─────────────────────────────────────
 const Audio = (() => {
   let ctx, mGain, sGain;
   let musicOn = true, sfxOn = true;
   let loopRunning = false, loopTimer = null;
   let beatCount = 0, nextBeatTime = 0;
   let trackIdx = 0;
-
   const TRACKS = [
-    { bpm: 126, kick:  [0, 8],        snare: [4, 12], bass:  [98,0,0,0,110,0,0,0,98,0,0,116,110,0,0,0] },
-    { bpm: 106, kick:  [0, 3, 8, 11], snare: [4, 12], bass:  [87,0,0,87,0,0,98,0,87,0,0,0,98,0,87,0]   },
-    { bpm: 138, kick:  [0, 4, 8, 12], snare: [4, 12], bass:  [110,0,110,0,0,0,123,0,110,0,0,0,116,0,0,0] },
+    { bpm:126, kick:[0,8],       snare:[4,12], bass:[98,0,0,0,110,0,0,0,98,0,0,116,110,0,0,0] },
+    { bpm:106, kick:[0,3,8,11],  snare:[4,12], bass:[87,0,0,87,0,0,98,0,87,0,0,0,98,0,87,0]   },
+    { bpm:138, kick:[0,4,8,12],  snare:[4,12], bass:[110,0,110,0,0,0,123,0,110,0,0,0,116,0,0,0] },
   ];
-
   function init() {
-    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
-    mGain = ctx.createGain(); mGain.gain.value = 0.18; mGain.connect(ctx.destination);
-    sGain = ctx.createGain(); sGain.gain.value = 0.8;  sGain.connect(ctx.destination);
+    if (ctx) { if (ctx.state==='suspended') ctx.resume(); return; }
+    ctx = new (window.AudioContext||window.webkitAudioContext)();
+    mGain = ctx.createGain(); mGain.gain.value=0.18; mGain.connect(ctx.destination);
+    sGain = ctx.createGain(); sGain.gain.value=0.8;  sGain.connect(ctx.destination);
   }
-
-  function osc(freq, type, t0, dur, vol, dest) {
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = type; o.frequency.value = freq;
-    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0001, t0+dur);
+  function osc(freq,type,t0,dur,vol,dest) {
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=type; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol,t0); g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
     o.connect(g); g.connect(dest||sGain); o.start(t0); o.stop(t0+dur+.01);
   }
-
-  function noise(t0, dur, vol, fType, fFreq, dest) {
-    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate*dur), ctx.sampleRate);
-    const d = buf.getChannelData(0); for (let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
-    const src = ctx.createBufferSource(); src.buffer = buf;
-    const f = ctx.createBiquadFilter(); f.type=fType; f.frequency.value=fFreq;
-    const g = ctx.createGain();
+  function noise(t0,dur,vol,fType,fFreq,dest) {
+    const buf=ctx.createBuffer(1,Math.floor(ctx.sampleRate*dur),ctx.sampleRate);
+    const d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+    const src=ctx.createBufferSource(); src.buffer=buf;
+    const f=ctx.createBiquadFilter(); f.type=fType; f.frequency.value=fFreq;
+    const g=ctx.createGain();
     g.gain.setValueAtTime(vol,t0); g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
     src.connect(f); f.connect(g); g.connect(dest||mGain); src.start(t0); src.stop(t0+dur+.01);
   }
-
-  function endGame() {
-    if (!sfxOn) return; init();
-    [523,523,659,523,784,1047].forEach((f,i) => osc(f,'triangle',ctx.currentTime+i*.18,.3,.45));
-  }
-
-  function kick(t) {
-    const o=ctx.createOscillator(),g=ctx.createGain();
-    o.frequency.setValueAtTime(180,t); o.frequency.exponentialRampToValueAtTime(.001,t+.45);
-    g.gain.setValueAtTime(.8,t); g.gain.exponentialRampToValueAtTime(.0001,t+.45);
-    o.connect(g); g.connect(mGain); o.start(t); o.stop(t+.46);
-  }
+  function endGame() { if(!sfxOn) return; init(); [523,523,659,523,784,1047].forEach((f,i)=>osc(f,'triangle',ctx.currentTime+i*.18,.3,.45)); }
+  function kick(t) { const o=ctx.createOscillator(),g=ctx.createGain(); o.frequency.setValueAtTime(180,t); o.frequency.exponentialRampToValueAtTime(.001,t+.45); g.gain.setValueAtTime(.8,t); g.gain.exponentialRampToValueAtTime(.0001,t+.45); o.connect(g); g.connect(mGain); o.start(t); o.stop(t+.46); }
   function snare(t) { noise(t,.12,.25,'bandpass',2200,mGain); }
   function hihat(t,acc) { noise(t,acc?.06:.03,acc?.18:.08,'highpass',7500,mGain); }
   function bass(t,freq,dur) { osc(freq,'triangle',t,dur,.45,mGain); }
-
-  function scheduleBeat(t, step) {
-    const track = TRACKS[trackIdx];
-    const s = (60/track.bpm)/4;
-    if (track.kick.includes(step))  kick(t);
-    if (track.snare.includes(step)) snare(t);
-    if (step%2===0) hihat(t, step%4===0);
-    if (track.bass[step]) bass(t, track.bass[step], s*1.7);
-  }
-
-  function scheduleLoop() {
-    if (!loopRunning) return;
-    const s16 = (60/TRACKS[trackIdx].bpm)/4;
-    while (nextBeatTime < ctx.currentTime+0.25) {
-      scheduleBeat(nextBeatTime, beatCount%16);
-      nextBeatTime+=s16; beatCount++;
-    }
-    loopTimer = setTimeout(scheduleLoop, 100);
-  }
-
-  function startMusic() {
-    if (!musicOn||loopRunning) return;
-    trackIdx = (trackIdx + 1) % TRACKS.length;
-    init(); loopRunning=true; beatCount=0;
-    nextBeatTime=ctx.currentTime+0.1; scheduleLoop();
-  }
-
-  function stopMusic() {
-    loopRunning=false;
-    if (loopTimer) { clearTimeout(loopTimer); loopTimer=null; }
-    if (mGain&&ctx) {
-      mGain.gain.setValueAtTime(mGain.gain.value,ctx.currentTime);
-      mGain.gain.linearRampToValueAtTime(0,ctx.currentTime+1.2);
-      setTimeout(()=>{ if(mGain) mGain.gain.value=.18; },1400);
-    }
-  }
-
-  function toggleMusic() {
-    musicOn=!musicOn; musicOn?startMusic():stopMusic(); return musicOn;
-  }
+  function scheduleBeat(t,step) { const track=TRACKS[trackIdx],s=(60/track.bpm)/4; if(track.kick.includes(step)) kick(t); if(track.snare.includes(step)) snare(t); if(step%2===0) hihat(t,step%4===0); if(track.bass[step]) bass(t,track.bass[step],s*1.7); }
+  function scheduleLoop() { if(!loopRunning) return; const s16=(60/TRACKS[trackIdx].bpm)/4; while(nextBeatTime<ctx.currentTime+0.25) { scheduleBeat(nextBeatTime,beatCount%16); nextBeatTime+=s16; beatCount++; } loopTimer=setTimeout(scheduleLoop,100); }
+  function startMusic() { if(!musicOn||loopRunning) return; trackIdx=(trackIdx+1)%TRACKS.length; init(); loopRunning=true; beatCount=0; nextBeatTime=ctx.currentTime+0.1; scheduleLoop(); }
+  function stopMusic() { loopRunning=false; if(loopTimer){clearTimeout(loopTimer);loopTimer=null;} if(mGain&&ctx){mGain.gain.setValueAtTime(mGain.gain.value,ctx.currentTime); mGain.gain.linearRampToValueAtTime(0,ctx.currentTime+1.2); setTimeout(()=>{if(mGain)mGain.gain.value=.18;},1400);} }
+  function toggleMusic() { musicOn=!musicOn; musicOn?startMusic():stopMusic(); return musicOn; }
   function toggleSfx() { sfxOn=!sfxOn; return sfxOn; }
-
   return { endGame, startMusic, stopMusic, toggleMusic, toggleSfx };
 })();
 
-function toggleMusic() {
-  const on = Audio.toggleMusic();
-  document.getElementById('btn-music').style.opacity = on ? '1' : '0.4';
-}
-function toggleSfx() {
-  const on = Audio.toggleSfx();
-  document.getElementById('btn-sfx').style.opacity = on ? '1' : '0.4';
-}
+function toggleMusic() { const on=Audio.toggleMusic(); document.getElementById('btn-music').style.opacity=on?'1':'0.4'; }
+function toggleSfx()   { const on=Audio.toggleSfx();   document.getElementById('btn-sfx').style.opacity=on?'1':'0.4'; }
 
 loadQuizzes();
-showPanel('setup');
 </script>
 </body>
 </html>
