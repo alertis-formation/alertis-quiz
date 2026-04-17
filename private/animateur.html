@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Alertis Quiz — Animateur</title>
+<link rel="stylesheet" href="/css/admin.css" />
+<link rel="stylesheet" href="/css/floaters.css" />
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+
+<div class="floaters" aria-hidden="true">
+  <span class="fl" style="left:5%;top:12%;font-size:4.2rem;animation-delay:0s;animation-duration:7s;">🦊</span>
+  <span class="fl" style="left:88%;top:8%;font-size:3.4rem;animation-delay:-2s;animation-duration:9s;">🦉</span>
+  <span class="fl" style="left:14%;top:72%;font-size:3.8rem;animation-delay:-4s;animation-duration:8s;">🐬</span>
+  <span class="fl" style="left:80%;top:65%;font-size:4.5rem;animation-delay:-1s;animation-duration:11s;">🐯</span>
+  <span class="fl" style="left:50%;top:5%;font-size:3rem;animation-delay:-6s;animation-duration:10s;">🦋</span>
+  <span class="fl" style="left:92%;top:40%;font-size:3.6rem;animation-delay:-3s;animation-duration:7s;">🌟</span>
+  <span class="fl" style="left:3%;top:45%;font-size:3.2rem;animation-delay:-5s;animation-duration:12s;">🎲</span>
+  <span class="fl" style="left:70%;top:88%;font-size:3.8rem;animation-delay:-7s;animation-duration:9s;">🏆</span>
+  <span class="fl" style="left:28%;top:88%;font-size:3.4rem;animation-delay:-2.5s;animation-duration:8s;">🧠</span>
+  <span class="fl" style="left:60%;top:18%;font-size:3rem;animation-delay:-8s;animation-duration:13s;">🎮</span>
+  <span class="fl" style="left:38%;top:78%;font-size:2.8rem;animation-delay:-1.5s;animation-duration:6s;">💡</span>
+  <span class="fl" style="left:76%;top:28%;font-size:4rem;animation-delay:-9s;animation-duration:10s;">🐙</span>
+</div>
+
+<nav>
+  <span class="logo">⚡ Alertis Quiz</span>
+  <span class="tab-btn" style="cursor:default;opacity:.7;">🎭 Mode Animateur</span>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+    <button id="btn-music" onclick="toggleMusic()" title="Musique de fond" class="tab-btn" style="font-size:.95rem;">🎵</button>
+    <button id="btn-sfx" onclick="toggleSfx()" title="Effets sonores" class="tab-btn" style="font-size:.95rem;">🔊</button>
+    <button class="tab-btn" onclick="logout()" style="color:#ef4444;">🚪 Déconnexion</button>
+  </div>
+</nav>
+
+<!-- PAGE : PARTIE EN COURS (seule page disponible) -->
+<div class="page active" id="page-game">
+
+  <div id="panel-setup" style="display:block;">
+    <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:20px;">🚀 Lancer une partie</h2>
+    <div class="card">
+      <div class="field">
+        <label>Choisir un quiz</label>
+        <select id="quiz-select">
+          <option value="">— Sélectionner un quiz —</option>
+        </select>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="blind-mode" style="width:auto;margin:0;" />
+        <label for="blind-mode" style="margin:0;text-transform:none;font-size:.9rem;cursor:pointer;">🙈 Mode aveugle (les joueurs ne voient pas le classement)</label>
+      </div>
+      <button class="btn btn-primary" onclick="createGame()">Créer la partie</button>
+    </div>
+  </div>
+
+  <div id="panel-waiting">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="card">
+        <div class="section-title">Code de la partie</div>
+        <div class="code-display" id="game-code-display">------</div>
+        <div class="qr-wrap"><img id="qr-img" src="" alt="QR Code" width="200" /></div>
+        <div class="join-url" id="join-url"></div>
+        <div style="text-align:center;margin-top:12px;">
+          <button class="btn btn-ghost btn-sm" onclick="copyJoinUrl()">📋 Copier le lien</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Joueurs connectés</div>
+          <span class="stat-pill" id="player-count">0 joueur(s)</span>
+        </div>
+        <div class="players-grid" id="players-grid"></div>
+        <hr class="divider" />
+        <button class="btn btn-green" id="btn-start" onclick="startGame()" disabled>▶ Démarrer la partie</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-question">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span class="stat-pill" id="q-counter">Question 1/1</span>
+        <span class="stat-pill" id="q-answers-progress">0/0 réponses</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="q-progress-bar" style="width:0%"></div>
+      </div>
+      <div class="timer-num" id="q-timer">⏱ 20</div>
+      <div class="q-text-big" id="q-text"></div>
+      <div class="choices-display" id="q-choices-display"></div>
+      <!-- Open answers panel -->
+      <div id="open-answers-panel" class="hidden" style="margin-top:12px;">
+        <div class="section-title" style="margin-bottom:8px;">✏️ Réponses des joueurs</div>
+        <div id="open-answers-list"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn btn-red" onclick="stopQuestion()">⏹ Terminer la question</button>
+        <button class="btn btn-ghost" id="btn-pause" onclick="togglePause()">⏸ Pause</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-results">
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title" style="margin-bottom:14px;" id="results-title">Résultats</div>
+      <div id="answer-bars"></div>
+      <div id="explanation-box" class="hidden" style="background:var(--card2);border-radius:8px;padding:12px;margin-top:12px;font-size:.9rem;color:var(--muted);border-left:3px solid var(--orange);"></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px;">🏆 Classement</div>
+      <ul class="leaderboard" id="results-leaderboard"></ul>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn btn-primary" id="btn-next" onclick="nextQuestion()">Suivant ▶</button>
+        <button class="btn btn-red" onclick="endGameAdmin()">🛑 Terminer la partie</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-end">
+    <div class="card" style="text-align:center;padding:40px 20px;">
+      <div style="font-size:3rem;margin-bottom:12px;">🏆</div>
+      <h2 style="font-size:1.8rem;font-weight:800;margin-bottom:24px;background:linear-gradient(135deg,#F97316,#6AA5E8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Partie terminée !</h2>
+      <ul class="leaderboard" id="end-leaderboard" style="max-width:400px;margin:0 auto 24px;"></ul>
+      <button class="btn btn-primary" onclick="resetGame()">🔄 Nouvelle partie</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let quizzes = [];
+let currentGameCode = null;
+let timerInterval = null;
+let gamePaused = false;
+
+const socket = io();
+
+async function loadQuizzes() {
+  const res = await fetch('/api/quizzes');
+  quizzes = await res.json();
+  loadQuizSelect();
+}
+
+function loadQuizSelect() {
+  const sel = document.getElementById('quiz-select');
+  sel.innerHTML = '<option value="">— Sélectionner un quiz —</option>' +
+    quizzes.map(q => `<option value="${q.id}">${esc(q.title)} (${q.questions.length} questions)</option>`).join('');
+}
+
+function createGame() {
+  const quizId = document.getElementById('quiz-select').value;
+  if (!quizId) return toast('Sélectionne un quiz', 'err');
+  const blindMode = document.getElementById('blind-mode').checked;
+  socket.emit('admin:create', { quizId, blindMode });
+}
+
+socket.on('admin:created', async ({ code }) => {
+  currentGameCode = code;
+  document.getElementById('game-code-display').textContent = code;
+  showPanel('waiting');
+  const res = await fetch(`/api/qr/${code}`);
+  const data = await res.json();
+  document.getElementById('qr-img').src = data.qr;
+  document.getElementById('join-url').textContent = data.url;
+  window._joinUrl = data.url;
+});
+
+function copyJoinUrl() {
+  navigator.clipboard.writeText(window._joinUrl || '');
+  toast('Lien copié !', 'ok');
+}
+
+socket.on('players:update', players => {
+  document.getElementById('players-grid').innerHTML = players.map(p => `
+    <div class="player-chip">${esc(p.name)}<button onclick="kickPlayer('${p.id}')" title="Expulser">✕</button></div>
+  `).join('');
+  const count = players.length;
+  document.getElementById('player-count').textContent = `${count} joueur(s)`;
+  document.getElementById('btn-start').disabled = count === 0;
+});
+
+function kickPlayer(id) { socket.emit('admin:kick', { code: currentGameCode, playerId: id }); }
+function startGame() { socket.emit('admin:start', { code: currentGameCode }); }
+
+socket.on('question:start', data => {
+  Audio.startMusic();
+  gamePaused = false;
+  document.getElementById('btn-pause').textContent = '⏸ Pause';
+  showPanel('question');
+  document.getElementById('q-counter').textContent = `Question ${data.index + 1}/${data.total}`;
+  document.getElementById('q-text').textContent = data.text;
+  document.getElementById('q-answers-progress').textContent = `0/? réponses`;
+
+  // Panel réponses ouvertes
+  const openPanel = document.getElementById('open-answers-panel');
+  const openList = document.getElementById('open-answers-list');
+  if (data.type === 'open') {
+    openPanel.classList.remove('hidden');
+    openList.innerHTML = '<div style="color:var(--muted);font-size:.85rem;">En attente des réponses…</div>';
+  } else {
+    openPanel.classList.add('hidden');
+    openList.innerHTML = '';
+  }
+
+  const colorClasses = ['c0','c1','c2','c3','c4','c5'];
+  const labels = ['🔴','🔵','🟢','🟡','🟣','🩵'];
+  document.getElementById('q-choices-display').innerHTML = data.choices.map((c, i) => {
+    const ch = typeof c === 'string' ? { text: c, image: '' } : c;
+    const content = ch.image
+      ? `<img src="${esc(ch.image)}" class="choice-img-preview" /> ${esc(ch.text)}`
+      : esc(ch.text);
+    return `<div class="choice-box ${colorClasses[i] || 'c0'}">${labels[i] || (i+1)} ${content}</div>`;
+  }).join('');
+  if (timerInterval) clearInterval(timerInterval);
+  let t = data.timeLimit;
+  document.getElementById('q-timer').textContent = `⏱ ${t}`;
+  document.getElementById('q-progress-bar').style.width = '100%';
+  timerInterval = setInterval(() => {
+    t--;
+    document.getElementById('q-timer').textContent = `⏱ ${Math.max(0, t)}`;
+    document.getElementById('q-progress-bar').style.width = Math.max(0, t / data.timeLimit * 100) + '%';
+    if (t <= 0) clearInterval(timerInterval);
+  }, 1000);
+  window._qData = data;
+});
+
+socket.on('open:answer', ({ playerId, name, text }) => {
+  const openList = document.getElementById('open-answers-list');
+  const div = document.createElement('div');
+  div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--card2);border-radius:8px;margin-bottom:6px;';
+  div.innerHTML = `
+    <span style="font-weight:700;flex:0 0 auto;">${esc(name)}</span>
+    <span style="flex:1;color:var(--text);">${esc(text)}</span>
+    <button class="btn btn-green btn-sm" style="flex-shrink:0;" onclick="validateOpen('${playerId}', 500, this)">✓ +500pts</button>
+    <button class="btn btn-ghost btn-sm" style="flex-shrink:0;" onclick="validateOpen('${playerId}', 0, this)">✕ 0pt</button>
+  `;
+  const placeholder = openList.querySelector('div[style*="muted"]');
+  if (placeholder) placeholder.remove();
+  openList.appendChild(div);
+});
+
+function validateOpen(playerId, pts, btn) {
+  socket.emit('admin:validate-open', { code: currentGameCode, playerId, points: pts });
+  btn.parentElement.style.opacity = '0.5';
+  btn.parentElement.querySelectorAll('button').forEach(b => b.disabled = true);
+}
+
+socket.on('answers:progress', ({ answered, total }) => {
+  document.getElementById('q-answers-progress').textContent = `${answered}/${total} réponses`;
+});
+
+function stopQuestion() { socket.emit('admin:stop-q', { code: currentGameCode }); }
+
+function togglePause() {
+  if (!gamePaused) {
+    socket.emit('admin:pause', { code: currentGameCode });
+  } else {
+    socket.emit('admin:resume', { code: currentGameCode });
+  }
+}
+
+socket.on('game:paused', ({ remaining }) => {
+  gamePaused = true;
+  if (timerInterval) clearInterval(timerInterval);
+  document.getElementById('btn-pause').textContent = '▶ Reprendre';
+  document.getElementById('q-timer').textContent = `⏸ ${remaining}`;
+});
+
+socket.on('game:resumed', ({ remaining }) => {
+  gamePaused = false;
+  document.getElementById('btn-pause').textContent = '⏸ Pause';
+  const data = window._qData;
+  let t = remaining;
+  document.getElementById('q-timer').textContent = `⏱ ${t}`;
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    t--;
+    document.getElementById('q-timer').textContent = `⏱ ${Math.max(0, t)}`;
+    document.getElementById('q-progress-bar').style.width = Math.max(0, t / (data?.timeLimit||20) * 100) + '%';
+    if (t <= 0) clearInterval(timerInterval);
+  }, 1000);
+});
+
+socket.on('question:results', data => {
+  if (timerInterval) clearInterval(timerInterval);
+  showPanel('results');
+  const q = window._qData;
+  const colors = ['var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)','var(--c6)'];
+  const correctIndexes = data.correctIndexes || [];
+  const maxCount = Math.max(...(data.counts || [0]), 1);
+  const isPoll = data.type === 'poll';
+  const isOpen = data.type === 'open';
+
+  if (isPoll) {
+    document.getElementById('results-title').textContent = '📊 Résultats du sondage';
+  } else if (isOpen) {
+    document.getElementById('results-title').textContent = '✏️ Réponses libres';
+  } else {
+    const correctTexts = correctIndexes.map(ci => {
+      if (!q || !q.choices[ci]) return `Choix ${ci+1}`;
+      const c = q.choices[ci];
+      return typeof c === 'string' ? c : (c.text || `Choix ${ci+1}`);
+    });
+    document.getElementById('results-title').textContent =
+      `✅ Bonne${correctIndexes.length > 1 ? 's' : ''} réponse${correctIndexes.length > 1 ? 's' : ''} : ${correctTexts.map(t => esc(t)).join(', ')}`;
+  }
+
+  if (isOpen) {
+    const openAnswers = data.openAnswers || [];
+    document.getElementById('answer-bars').innerHTML = openAnswers.length === 0
+      ? '<div style="color:var(--muted);">Aucune réponse reçue.</div>'
+      : openAnswers.map(a => `<div style="padding:4px 0;border-bottom:1px solid var(--border);"><strong>${esc(a.name)}</strong> : ${esc(a.text)}</div>`).join('');
+  } else {
+    document.getElementById('answer-bars').innerHTML = (q ? q.choices : []).map((c, i) => {
+      const ch = typeof c === 'string' ? { text: c, image: '' } : c;
+      const isCorrect = correctIndexes.includes(i);
+      const count = (data.counts || [])[i] || 0;
+      const pct = Math.round(count / maxCount * 100);
+      const labelContent = ch.image
+        ? `<img src="${esc(ch.image)}" style="max-height:20px;border-radius:3px;vertical-align:middle;"> ${esc(ch.text)}`
+        : esc(ch.text);
+      return `<div class="answer-bar">
+        <div class="answer-bar-label" title="${esc(ch.text)}">${labelContent}</div>
+        <div class="answer-bar-fill" style="background:${colors[i]||colors[5]};width:${pct}%;border:${(!isPoll && isCorrect)?'2px solid #fff':'none'}">${(!isPoll && isCorrect)?'✓':''}</div>
+        <div class="answer-bar-count">${count}</div>
+      </div>`;
+    }).join('');
+  }
+
+  const expBox = document.getElementById('explanation-box');
+  if (data.explanation) { expBox.textContent = '💡 ' + data.explanation; expBox.classList.remove('hidden'); }
+  else expBox.classList.add('hidden');
+  document.getElementById('results-leaderboard').innerHTML = (data.leaderboard || []).slice(0,5).map(p =>
+    `<li class="lb-row"><span class="lb-rank">${['🥇','🥈','🥉'][p.rank-1]||'#'+p.rank}</span><span class="lb-name">${esc(p.name)}</span><span class="lb-score">${p.score.toLocaleString('fr-FR')} pts</span></li>`
+  ).join('');
+  document.getElementById('btn-next').textContent = data.isLast ? '🏁 Voir le classement final' : 'Suivant ▶';
+});
+
+function nextQuestion() { socket.emit('admin:next', { code: currentGameCode }); }
+function endGameAdmin() { if (!confirm('Terminer la partie ?')) return; socket.emit('admin:end-game', { code: currentGameCode }); }
+
+socket.on('game:end', ({ leaderboard }) => {
+  Audio.stopMusic();
+  Audio.endGame();
+  showPanel('end');
+  setTimeout(() => {
+    confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 }, colors: ['#F97316','#6AA5E8','#10b981','#f59e0b'] });
+  }, 300);
+  document.getElementById('end-leaderboard').innerHTML = leaderboard.slice(0,10).map(p =>
+    `<li class="lb-row"><span class="lb-rank">${['🥇','🥈','🥉'][p.rank-1]||'#'+p.rank}</span><span class="lb-name">${esc(p.name)}</span><span class="lb-score">${p.score.toLocaleString('fr-FR')} pts</span></li>`
+  ).join('');
+});
+
+function resetGame() { currentGameCode = null; gamePaused = false; showPanel('setup'); loadQuizSelect(); }
+socket.on('error', msg => toast(msg, 'err'));
+
+function showPanel(name) {
+  ['setup','waiting','question','results','end'].forEach(p => document.getElementById(`panel-${p}`).style.display = 'none');
+  document.getElementById(`panel-${name}`).style.display = 'block';
+}
+
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg, type='ok') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+async function logout() {
+  await fetch('/api/logout', { method: 'POST' });
+  window.location.href = '/login.html';
+}
+
+// ── Moteur Audio ─────────────────────────────────────────────
+const Audio = (() => {
+  let ctx, mGain, sGain;
+  let musicOn = true, sfxOn = true;
+  let loopRunning = false, loopTimer = null;
+  let beatCount = 0, nextBeatTime = 0;
+  let trackIdx = 0;
+
+  const TRACKS = [
+    { bpm: 126, kick:  [0, 8],        snare: [4, 12], bass:  [98,0,0,0,110,0,0,0,98,0,0,116,110,0,0,0] },
+    { bpm: 106, kick:  [0, 3, 8, 11], snare: [4, 12], bass:  [87,0,0,87,0,0,98,0,87,0,0,0,98,0,87,0]   },
+    { bpm: 138, kick:  [0, 4, 8, 12], snare: [4, 12], bass:  [110,0,110,0,0,0,123,0,110,0,0,0,116,0,0,0] },
+  ];
+
+  function init() {
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    mGain = ctx.createGain(); mGain.gain.value = 0.18; mGain.connect(ctx.destination);
+    sGain = ctx.createGain(); sGain.gain.value = 0.8;  sGain.connect(ctx.destination);
+  }
+
+  function osc(freq, type, t0, dur, vol, dest) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0001, t0+dur);
+    o.connect(g); g.connect(dest||sGain); o.start(t0); o.stop(t0+dur+.01);
+  }
+
+  function noise(t0, dur, vol, fType, fFreq, dest) {
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate*dur), ctx.sampleRate);
+    const d = buf.getChannelData(0); for (let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const f = ctx.createBiquadFilter(); f.type=fType; f.frequency.value=fFreq;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(vol,t0); g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
+    src.connect(f); f.connect(g); g.connect(dest||mGain); src.start(t0); src.stop(t0+dur+.01);
+  }
+
+  function endGame() {
+    if (!sfxOn) return; init();
+    [523,523,659,523,784,1047].forEach((f,i) => osc(f,'triangle',ctx.currentTime+i*.18,.3,.45));
+  }
+
+  function kick(t) {
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.frequency.setValueAtTime(180,t); o.frequency.exponentialRampToValueAtTime(.001,t+.45);
+    g.gain.setValueAtTime(.8,t); g.gain.exponentialRampToValueAtTime(.0001,t+.45);
+    o.connect(g); g.connect(mGain); o.start(t); o.stop(t+.46);
+  }
+  function snare(t) { noise(t,.12,.25,'bandpass',2200,mGain); }
+  function hihat(t,acc) { noise(t,acc?.06:.03,acc?.18:.08,'highpass',7500,mGain); }
+  function bass(t,freq,dur) { osc(freq,'triangle',t,dur,.45,mGain); }
+
+  function scheduleBeat(t, step) {
+    const track = TRACKS[trackIdx];
+    const s = (60/track.bpm)/4;
+    if (track.kick.includes(step))  kick(t);
+    if (track.snare.includes(step)) snare(t);
+    if (step%2===0) hihat(t, step%4===0);
+    if (track.bass[step]) bass(t, track.bass[step], s*1.7);
+  }
+
+  function scheduleLoop() {
+    if (!loopRunning) return;
+    const s16 = (60/TRACKS[trackIdx].bpm)/4;
+    while (nextBeatTime < ctx.currentTime+0.25) {
+      scheduleBeat(nextBeatTime, beatCount%16);
+      nextBeatTime+=s16; beatCount++;
+    }
+    loopTimer = setTimeout(scheduleLoop, 100);
+  }
+
+  function startMusic() {
+    if (!musicOn||loopRunning) return;
+    trackIdx = (trackIdx + 1) % TRACKS.length;
+    init(); loopRunning=true; beatCount=0;
+    nextBeatTime=ctx.currentTime+0.1; scheduleLoop();
+  }
+
+  function stopMusic() {
+    loopRunning=false;
+    if (loopTimer) { clearTimeout(loopTimer); loopTimer=null; }
+    if (mGain&&ctx) {
+      mGain.gain.setValueAtTime(mGain.gain.value,ctx.currentTime);
+      mGain.gain.linearRampToValueAtTime(0,ctx.currentTime+1.2);
+      setTimeout(()=>{ if(mGain) mGain.gain.value=.18; },1400);
+    }
+  }
+
+  function toggleMusic() {
+    musicOn=!musicOn; musicOn?startMusic():stopMusic(); return musicOn;
+  }
+  function toggleSfx() { sfxOn=!sfxOn; return sfxOn; }
+
+  return { endGame, startMusic, stopMusic, toggleMusic, toggleSfx };
+})();
+
+function toggleMusic() {
+  const on = Audio.toggleMusic();
+  document.getElementById('btn-music').style.opacity = on ? '1' : '0.4';
+}
+function toggleSfx() {
+  const on = Audio.toggleSfx();
+  document.getElementById('btn-sfx').style.opacity = on ? '1' : '0.4';
+}
+
+loadQuizzes();
+showPanel('setup');
+</script>
+</body>
+</html>
