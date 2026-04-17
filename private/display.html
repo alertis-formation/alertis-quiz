@@ -153,6 +153,7 @@ body {
       <div class="url-display" id="d-url"></div>
     </div>
   </div>
+  <button class="next-btn-d" id="d-start-btn" onclick="startGame()">▶ Démarrer la partie</button>
 </div>
 
 <!-- QUESTION -->
@@ -166,6 +167,7 @@ body {
   <img class="q-image-display" id="d-q-image" src="" alt="" style="display:none;" />
   <div class="q-text-display" id="d-q-text">Question…</div>
   <div class="choices-grid-display" id="d-choices"></div>
+  <button class="next-btn-d" onclick="stopQuestion()" style="background:linear-gradient(135deg,#ef4444,#b91c1c);box-shadow:0 8px 32px rgba(239,68,68,.5);">⏹ Terminer la question</button>
 </div>
 
 <!-- RESULTS -->
@@ -327,9 +329,9 @@ socket.on('display:results', data => {
   show('screen-results');
 });
 
-function nextQuestion() {
-  socket.emit('display:next', { code });
-}
+function startGame()    { socket.emit('display:start',  { code }); }
+function stopQuestion() { socket.emit('display:stop-q', { code }); }
+function nextQuestion() { socket.emit('display:next',   { code }); }
 
 socket.on('display:end', ({ leaderboard }) => {
   document.getElementById('d-end-lb').innerHTML = leaderboard.slice(0, 8).map((p, i) => {

@@ -211,6 +211,20 @@ app.get('/api/qr/:code', async (req, res) => {
 // ============================================================
 io.on('connection', socket => {
 
+  // ── DISPLAY : démarrer la partie ──────────────────────────
+  socket.on('display:start', ({ code }) => {
+    const g = games[code];
+    if (!g || g.state !== 'waiting') return;
+    sendQuestion(g, 0);
+  });
+
+  // ── DISPLAY : terminer la question en cours ────────────────
+  socket.on('display:stop-q', ({ code }) => {
+    const g = games[code];
+    if (!g || g.state !== 'question') return;
+    showResults(g);
+  });
+
   // ── DISPLAY : passer à la question suivante ───────────────
   socket.on('display:next', ({ code }) => {
     const g = games[code];
