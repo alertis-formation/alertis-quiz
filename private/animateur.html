@@ -296,7 +296,7 @@ function copyJoinUrl() {
 }
 function openDisplay() {
   if (!currentGameCode) return;
-  window.open(`/display.html?code=${currentGameCode}`, '_blank', 'width=1280,height=720,menubar=no,toolbar=no');
+  window.open(`/display?code=${currentGameCode}`, '_blank', 'width=1280,height=720,menubar=no,toolbar=no');
 }
 
 socket.on('players:update', players => {
@@ -505,7 +505,7 @@ function toast(msg, type='ok') {
 
 async function logout() {
   await fetch('/api/logout', { method: 'POST' });
-  window.location.href = '/login.html';
+  window.location.href = '/login';
 }
 
 // ── Moteur Audio ─────────────────────────────────────

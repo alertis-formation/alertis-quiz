@@ -28,34 +28,33 @@ app.use(session({
 // ============================================================
 function requireAuth(req, res, next) {
   if (req.session.isAdmin) return next();
-  res.redirect('/login.html');
+  res.redirect('/login');
 }
 
 // Middleware : animateur ou admin
 function requireAnimateur(req, res, next) {
   if (req.session.isAdmin || req.session.isAnimateur) return next();
-  res.redirect('/login.html');
+  res.redirect('/login');
 }
 
 
-// Servir admin.html uniquement si connecté
-app.get('/admin.html', requireAuth, (req, res) => {
+// Servir admin (avec et sans .html)
+app.get(['/admin', '/admin.html'], requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'private', 'admin.html'));
 });
 
-// Servir animateur.html si animateur ou admin
-app.get('/animateur.html', requireAnimateur, (req, res) => {
+// Servir animateur (avec et sans .html)
+app.get(['/animateur', '/animateur.html'], requireAnimateur, (req, res) => {
   res.sendFile(path.join(__dirname, 'private', 'animateur.html'));
 });
 
-
-// Servir display.html (affichage projecteur — animateur ou admin)
-app.get('/display.html', requireAnimateur, (req, res) => {
+// Servir display (avec et sans .html)
+app.get(['/display', '/display.html'], requireAnimateur, (req, res) => {
   res.sendFile(path.join(__dirname, 'private', 'display.html'));
 });
 
-// Tout le reste est public (play.html, index.html, login.html...)
-app.use(express.static(path.join(__dirname, 'public')));
+// Tout le reste est public (play, index, login…) — extensions .html optionnelles
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
 // ============================================================
 // API Auth
@@ -194,7 +193,7 @@ app.post('/api/quizzes/:id/duplicate', requireAuth, (req, res) => {
 
 // Génération QR code pour rejoindre une partie
 app.get('/api/qr/:code', async (req, res) => {
-  const url = `${req.protocol}://${req.get('host')}/play.html?code=${req.params.code}`;
+  const url = `${req.protocol}://${req.get('host')}/play?code=${req.params.code}`;
   try {
     const qr = await QRCode.toDataURL(url, {
       width: 280, margin: 2,
@@ -626,7 +625,7 @@ function buildLeaderboard(g) {
 // ============================================================
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`⚡ Alertis Quiz   → http://localhost:${PORT}/admin.html`);
-  console.log(`   Joueurs       → http://localhost:${PORT}/play.html`);
-  console.log(`   Animateur     → http://localhost:${PORT}/animateur.html`);
+  console.log(`⚡ Alertis Quiz   → http://localhost:${PORT}/admin`);
+  console.log(`   Joueurs       → http://localhost:${PORT}/play`);
+  console.log(`   Animateur     → http://localhost:${PORT}/animateur`);
 });
