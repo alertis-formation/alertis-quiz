@@ -88,10 +88,21 @@ body {
 #screen-results { gap: 28px; }
 .results-title-d { font-size: 1.6rem; font-weight: 900; text-align: center; }
 .answer-bars-d { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 900px; }
-.bar-row { display: flex; align-items: center; gap: 16px; }
+.bar-row { display: flex; align-items: center; gap: 16px; transition: opacity .4s, transform .4s; }
+.bar-row.wrong { opacity: .35; }
+.bar-row.correct {
+  transform: scale(1.04);
+  filter: drop-shadow(0 0 18px rgba(16,185,129,.9));
+  animation: correct-pulse 1.2s ease-in-out infinite alternate;
+}
+@keyframes correct-pulse {
+  from { filter: drop-shadow(0 0 12px rgba(16,185,129,.7)); }
+  to   { filter: drop-shadow(0 0 32px rgba(16,185,129,1)); }
+}
 .bar-label-d { width: 220px; font-size: 1rem; font-weight: 700; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-row.correct .bar-label-d { font-size: 1.1rem; color: #6ee7b7; }
 .bar-fill-d { height: 52px; border-radius: 12px; display: flex; align-items: center; padding: 0 18px; font-size: 1rem; font-weight: 800; color: #fff; min-width: 52px; transition: width .7s cubic-bezier(.22,.68,0,1.2); }
-.bar-fill-d.correct { box-shadow: 0 0 0 3px #fff, 0 0 24px rgba(16,185,129,.7); }
+.bar-fill-d.correct { background: linear-gradient(90deg,#10b981,#34d399) !important; height: 64px; font-size: 1.3rem; box-shadow: 0 0 0 3px #fff, 0 0 28px rgba(16,185,129,.8); }
 .bar-count-d { width: 40px; text-align: right; font-size: 1rem; color: rgba(255,255,255,.6); flex-shrink: 0; }
 .explanation-d { background: rgba(249,115,22,.15); border: 1.5px solid var(--orange); border-radius: 14px; padding: 16px 24px; font-size: 1rem; max-width: 900px; width: 100%; }
 .top3-d { display: flex; gap: 20px; justify-content: center; align-items: flex-end; margin-top: 8px; }
@@ -300,9 +311,10 @@ socket.on('display:results', data => {
     const isCorrect = !isPoll && !isOpen && correctIndexes.includes(i);
     const count = counts[i] || 0;
     const pct = Math.round(count / maxCount * 100);
-    return `<div class="bar-row">
-      <div class="bar-label-d">${esc(ch.text || `Choix ${i+1}`)}</div>
-      <div class="bar-fill-d ${isCorrect ? 'correct' : ''}" style="background:${colors[i]||colors[5]};width:${pct}%">${isCorrect ? '✓ ' : ''}${count}</div>
+    const rowClass = (!isPoll && !isOpen) ? (isCorrect ? 'correct' : 'wrong') : '';
+    return `<div class="bar-row ${rowClass}">
+      <div class="bar-label-d">${isCorrect ? '✅ ' : ''}${esc(ch.text || `Choix ${i+1}`)}</div>
+      <div class="bar-fill-d ${isCorrect ? 'correct' : ''}" style="background:${colors[i]||colors[5]};width:${Math.max(pct,4)}%">${isCorrect ? '✔ ' : ''}${count}</div>
       <div class="bar-count-d">${count}</div>
     </div>`;
   }).join('');
