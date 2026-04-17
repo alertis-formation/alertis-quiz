@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/css/play.css" />
 <link rel="stylesheet" href="/css/floaters.css" />
 <script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 </head>
 <body>
 
@@ -66,11 +67,17 @@
   <div class="progress-wrap">
     <div class="progress-fill" id="q-progress" style="width:100%"></div>
   </div>
+  <div class="double-pts-banner hidden" id="double-pts-banner">✨ DOUBLE POINTS !</div>
   <img class="q-image hidden" id="q-image" src="" alt="" />
   <div class="q-text" id="q-text">Question...</div>
   <div class="answers-grid" id="answers-grid"></div>
   <div class="multi-hint hidden" id="multi-hint">Sélectionne toutes les bonnes réponses</div>
   <button class="submit-multi-btn" id="submit-multi-btn" onclick="submitMultiAnswer()">✅ Valider mes réponses</button>
+  <!-- Zone réponse ouverte -->
+  <div class="open-answer-wrap hidden" id="open-answer-wrap">
+    <textarea id="open-answer-input" placeholder="Ta réponse..." maxlength="200" rows="3"></textarea>
+    <button class="submit-multi-btn" onclick="submitOpenAnswer()">📤 Envoyer</button>
+  </div>
 </div>
 
 <!-- ANSWER SENT -->
@@ -78,6 +85,7 @@
   <div class="result-icon" id="result-icon">✅</div>
   <div class="result-label" id="result-label">Bonne réponse !</div>
   <div class="points-badge" id="result-points">+750 pts</div>
+  <div class="streak-badge hidden" id="streak-badge">🔥 x2</div>
   <div class="waiting-card">
     <div class="waiting-phrase" id="waiting-phrase">⏳ En attente des autres joueurs…</div>
     <div class="dot-loader"><span></span><span></span><span></span></div>
@@ -121,7 +129,7 @@ let currentAnswered = false;
 let timerInterval = null;
 let currentType = 'qcm';
 let selectedIndexes = [];
-let resultsRevealTimeout = null; // fix race condition
+let resultsRevealTimeout = null;
 
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -159,12 +167,13 @@ socket.on('join:ok', ({ name, quizTitle, questionCount }) => {
 });
 
 socket.on('question:start', data => {
-  // ── FIX : annuler le timeout de révélation de la question précédente ──
   if (resultsRevealTimeout) { clearTimeout(resultsRevealTimeout); resultsRevealTimeout = null; }
 
   currentAnswered = false;
   selectedIndexes = [];
   currentType = data.type || 'qcm';
+  window._qData = data;
+  window._currentType = currentType;
 
   Audio.startMusic();
 
@@ -182,6 +191,15 @@ socket.on('question:start', data => {
   document.body.appendChild(overlay);
   setTimeout(() => overlay.remove(), 1600);
 
+  // Points doubles — afficher le badge avant les questions
+  const doubleBanner = document.getElementById('double-pts-banner');
+  if (data.doublePoints) {
+    doubleBanner.classList.remove('hidden');
+    setTimeout(() => doubleBanner.classList.add('hidden'), 2000);
+  } else {
+    doubleBanner.classList.add('hidden');
+  }
+
   const img = document.getElementById('q-image');
   if (data.image) { img.src = data.image; img.classList.remove('hidden'); }
   else img.classList.add('hidden');
@@ -192,23 +210,36 @@ socket.on('question:start', data => {
   const shapes = ['▲','◆','●','★','✦','◉'];
   const classes = ['c0','c1','c2','c3','c4','c5'];
 
-  document.getElementById('answers-grid').innerHTML = data.choices.map((c, i) => {
-    const ch = typeof c === 'string' ? { text: c, image: '' } : c;
-    const content = ch.image
-      ? `<img src="${esc(ch.image)}" />`
-      : `<span class="shape">${shapes[i] || (i+1)}</span> ${esc(ch.text)}`;
-    return `<button class="answer-btn ${classes[i] || 'c0'}" id="ans-${i}" onclick="answer(${i})">${content}</button>`;
-  }).join('');
-
-  // Afficher les éléments multi si besoin
-  const hint = document.getElementById('multi-hint');
+  // Grille de réponses (masquée pour open)
+  const answersGrid = document.getElementById('answers-grid');
+  const multiHint = document.getElementById('multi-hint');
   const submitBtn = document.getElementById('submit-multi-btn');
-  if (currentType === 'multi') {
-    hint.classList.remove('hidden');
+  const openWrap = document.getElementById('open-answer-wrap');
+  const openInput = document.getElementById('open-answer-input');
+
+  if (currentType === 'open') {
+    answersGrid.innerHTML = '';
+    multiHint.classList.add('hidden');
     submitBtn.style.display = 'none';
+    openWrap.classList.remove('hidden');
+    openInput.value = '';
   } else {
-    hint.classList.add('hidden');
-    submitBtn.style.display = 'none';
+    openWrap.classList.add('hidden');
+    answersGrid.innerHTML = data.choices.map((c, i) => {
+      const ch = typeof c === 'string' ? { text: c, image: '' } : c;
+      const content = ch.image
+        ? `<img src="${esc(ch.image)}" />`
+        : `<span class="shape">${shapes[i] || (i+1)}</span> ${esc(ch.text)}`;
+      return `<button class="answer-btn ${classes[i] || 'c0'}" id="ans-${i}" onclick="answer(${i})">${content}</button>`;
+    }).join('');
+
+    if (currentType === 'multi') {
+      multiHint.classList.remove('hidden');
+      submitBtn.style.display = 'none';
+    } else {
+      multiHint.classList.add('hidden');
+      submitBtn.style.display = 'none';
+    }
   }
 
   if (timerInterval) clearInterval(timerInterval);
@@ -219,11 +250,32 @@ socket.on('question:start', data => {
     updateTimer(t, data.timeLimit);
     if (t <= 0) {
       clearInterval(timerInterval);
-      // Auto-soumettre pour multi si pas encore validé
       if (currentType === 'multi' && !currentAnswered && selectedIndexes.length > 0) submitMultiAnswer();
     }
   }, 1000);
   show('screen-question');
+});
+
+// Pause côté joueur
+socket.on('game:paused', ({ remaining }) => {
+  if (timerInterval) clearInterval(timerInterval);
+  const el = document.getElementById('q-timer');
+  el.textContent = '⏸';
+  el.className = 'timer-circle paused';
+});
+
+socket.on('game:resumed', ({ remaining }) => {
+  const el = document.getElementById('q-timer');
+  el.className = 'timer-circle';
+  const data = window._qData || {};
+  let t = remaining;
+  updateTimer(t, data.timeLimit || 20);
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    t--;
+    updateTimer(t, data.timeLimit || 20);
+    if (t <= 0) clearInterval(timerInterval);
+  }, 1000);
 });
 
 function updateTimer(t, total) {
@@ -270,12 +322,22 @@ function submitAnswer(indexes) {
   });
 }
 
-socket.on('answer:ok', ({ correct, points }) => {
+function submitOpenAnswer() {
+  if (currentAnswered) return;
+  const text = document.getElementById('open-answer-input').value.trim();
+  if (!text) return;
+  currentAnswered = true;
+  socket.emit('player:answer', { text });
+  document.getElementById('open-answer-wrap').classList.add('hidden');
+  showAnswerResult(false, 0, 0, true); // isOpen=true
+}
+
+socket.on('answer:ok', ({ correct, points, streak }) => {
   if (timerInterval) clearInterval(timerInterval);
   myScore += points;
   window._lastAnswerCorrect = correct;
   window._lastAnswerPoints = points;
-  showAnswerResult(correct, points);
+  showAnswerResult(correct, points, streak || 0, false);
 });
 
 const WAITING_PHRASES_CORRECT = [
@@ -303,48 +365,83 @@ const WAITING_PHRASES_WRONG = [
 
 let waitingPhraseInterval = null;
 
-function showAnswerResult(correct, points) {
-  if (correct) Audio.correct(); else Audio.wrong();
-  document.getElementById('result-icon').textContent = correct ? '✅' : '❌';
-  document.getElementById('result-label').textContent = correct ? 'Bonne réponse !' : 'Mauvaise réponse…';
-  document.getElementById('result-points').textContent = correct ? `+${points.toLocaleString('fr-FR')} pts` : '0 pts';
-  document.getElementById('result-points').style.borderColor = correct ? 'var(--green)' : 'var(--red)';
+function showAnswerResult(correct, points, streak, isOpenAnswer) {
+  const streakBadge = document.getElementById('streak-badge');
+
+  if (isOpenAnswer || window._currentType === 'poll') {
+    // Sondage ou réponse ouverte
+    if (!isOpenAnswer) Audio.correct();
+    document.getElementById('result-icon').textContent = '📤';
+    document.getElementById('result-label').textContent = window._currentType === 'poll' ? 'Réponse enregistrée !' : 'Merci pour ta réponse !';
+    document.getElementById('result-points').textContent = '—';
+    document.getElementById('result-points').style.borderColor = 'var(--blue-md)';
+    streakBadge.classList.add('hidden');
+  } else {
+    if (correct) Audio.correct(); else Audio.wrong();
+    document.getElementById('result-icon').textContent = correct ? '✅' : '❌';
+    document.getElementById('result-label').textContent = correct ? 'Bonne réponse !' : 'Mauvaise réponse…';
+    document.getElementById('result-points').textContent = correct ? `+${points.toLocaleString('fr-FR')} pts` : '0 pts';
+    document.getElementById('result-points').style.borderColor = correct ? 'var(--green)' : 'var(--red)';
+
+    // Streak badge
+    if (correct && streak >= 2) {
+      streakBadge.textContent = `🔥 x${streak}`;
+      streakBadge.classList.remove('hidden');
+    } else {
+      streakBadge.classList.add('hidden');
+    }
+  }
 
   // Lancer les phrases qui défilent
   const phrases = correct ? WAITING_PHRASES_CORRECT : WAITING_PHRASES_WRONG;
   const el = document.getElementById('waiting-phrase');
   let idx = Math.floor(Math.random() * phrases.length);
-  el.textContent = phrases[idx];
+  el.textContent = (isOpenAnswer || window._currentType === 'poll') ? '⏳ En attente des autres joueurs…' : phrases[idx];
   if (waitingPhraseInterval) clearInterval(waitingPhraseInterval);
-  waitingPhraseInterval = setInterval(() => {
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(-8px)';
-    el.style.transition = 'opacity .3s, transform .3s';
-    setTimeout(() => {
-      idx = (idx + 1) % phrases.length;
-      el.textContent = phrases[idx];
-      el.style.opacity = '1';
-      el.style.transform = 'translateY(0)';
-    }, 320);
-  }, 2800);
+  if (!isOpenAnswer && window._currentType !== 'poll') {
+    waitingPhraseInterval = setInterval(() => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(-8px)';
+      el.style.transition = 'opacity .3s, transform .3s';
+      setTimeout(() => {
+        idx = (idx + 1) % phrases.length;
+        el.textContent = phrases[idx];
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+      }, 320);
+    }, 2800);
+  }
 
   show('screen-result');
 }
 
 socket.on('question:results', data => {
   if (timerInterval) clearInterval(timerInterval);
-  const correctIndexes = data.correctIndexes || (data.correctIndex !== undefined ? [data.correctIndex] : []);
-  document.querySelectorAll('.answer-btn').forEach((btn, i) => {
-    btn.classList.remove('selected', 'dimmed');
-    if (correctIndexes.includes(i)) btn.classList.add('correct-reveal');
-    else btn.classList.add('wrong-reveal');
-  });
-  show('screen-question');
+  const correctIndexes = data.correctIndexes || [];
+  const isPoll = data.type === 'poll';
+  const isOpen = data.type === 'open';
+
+  // Ne révéler les bonnes/mauvaises réponses que si ce n'est pas un sondage/open
+  if (!isPoll && !isOpen && correctIndexes.length > 0) {
+    document.querySelectorAll('.answer-btn').forEach((btn, i) => {
+      btn.classList.remove('selected', 'dimmed');
+      if (correctIndexes.includes(i)) btn.classList.add('correct-reveal');
+      else btn.classList.add('wrong-reveal');
+    });
+    show('screen-question');
+  }
+
   resultsRevealTimeout = setTimeout(() => {
     resultsRevealTimeout = null;
-    renderLeaderboard(data.leaderboard, 'lb-list');
-    show('screen-leaderboard');
-  }, 1500);
+    // Afficher le leaderboard seulement si disponible (blindMode = pas de leaderboard)
+    if (data.leaderboard) {
+      renderLeaderboard(data.leaderboard, 'lb-list');
+      show('screen-leaderboard');
+    } else {
+      // Mode aveugle ou pas de leaderboard : rester sur l'écran résultat
+      // On ne fait rien, la prochaine question viendra
+    }
+  }, (isPoll || isOpen) ? 500 : 1500);
 });
 
 socket.on('game:end', ({ leaderboard }) => {
@@ -361,6 +458,9 @@ socket.on('game:end', ({ leaderboard }) => {
   document.getElementById('end-name').textContent = myName;
   renderLeaderboard(leaderboard, 'end-lb-list');
   show('screen-end');
+  setTimeout(() => {
+    confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 }, colors: ['#F97316','#6AA5E8','#10b981','#f59e0b'] });
+  }, 300);
 });
 
 function renderLeaderboard(leaderboard, listId) {

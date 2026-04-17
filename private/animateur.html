@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Alertis Quiz — Admin</title>
+<title>Alertis Quiz — Animateur</title>
 <link rel="stylesheet" href="/css/admin.css" />
 <link rel="stylesheet" href="/css/floaters.css" />
 <script src="/socket.io/socket.io.js"></script>
@@ -28,8 +28,7 @@
 
 <nav>
   <span class="logo">⚡ Alertis Quiz</span>
-  <button class="tab-btn active" onclick="showTab('quizzes')">📚 Mes Quiz</button>
-  <button class="tab-btn" onclick="showTab('game')" id="tab-game">🚀 Lancer une partie</button>
+  <span class="tab-btn" style="cursor:default;opacity:.7;">🎭 Mode Animateur</span>
   <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
     <button id="btn-music" onclick="toggleMusic()" title="Musique de fond" class="tab-btn" style="font-size:.95rem;">🎵</button>
     <button id="btn-sfx" onclick="toggleSfx()" title="Effets sonores" class="tab-btn" style="font-size:.95rem;">🔊</button>
@@ -37,82 +36,8 @@
   </div>
 </nav>
 
-<!-- PAGE : GESTION DES QUIZZES -->
-<div class="page active" id="page-quizzes">
-
-  <div id="quiz-list-view">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-      <h2 style="font-size:1.4rem;font-weight:800;">Mes Quiz</h2>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <select id="folder-filter" onchange="renderQuizList()" style="padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:.85rem;cursor:pointer;">
-          <option value="">Tous les dossiers</option>
-        </select>
-        <button class="btn btn-ghost" onclick="openImportModal()">📋 Importer du texte</button>
-        <button class="btn btn-primary" onclick="newQuiz()">+ Nouveau quiz</button>
-      </div>
-    </div>
-    <div id="quiz-list"></div>
-  </div>
-
-  <!-- MODAL IMPORT -->
-  <div class="modal-overlay hidden" id="import-modal">
-    <div class="modal-box">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <h3 style="font-size:1.1rem;font-weight:800;">📋 Importer un quiz depuis du texte</h3>
-        <button class="btn btn-ghost btn-sm" onclick="closeImportModal()">✕</button>
-      </div>
-      <div class="import-hint">
-        Format attendu — une question par bloc :<br>
-        <code>1. Quiz</code> &nbsp;ou&nbsp; <code>1. Vrai ou faux</code><br>
-        <code>Texte de la question</code><br>
-        <code>✅ Bonne réponse</code><br>
-        <code>❌ Mauvaise réponse</code><br>
-        Plusieurs <code>✅</code> = type "Plusieurs bonnes réponses" détecté automatiquement.
-      </div>
-      <div class="field" style="margin:0;">
-        <label>Titre du quiz</label>
-        <input type="text" id="import-title" placeholder="Ex: Formation incendie" maxlength="80" />
-      </div>
-      <div class="field" style="margin:0;flex:1;display:flex;flex-direction:column;">
-        <label>Colle ton texte ici</label>
-        <textarea id="import-textarea" placeholder="1. Quiz&#10;&#10;Quelle est la capitale du Maroc ?&#10;✅ Rabat&#10;❌ Casablanca&#10;❌ Marrakech"></textarea>
-      </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button class="btn btn-ghost" onclick="closeImportModal()">Annuler</button>
-        <button class="btn btn-primary" onclick="runImport()">✨ Générer le quiz</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="editor">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-      <button class="btn btn-ghost btn-sm" onclick="closeEditor()">← Retour</button>
-      <h2 style="font-size:1.3rem;font-weight:800;" id="editor-title">Éditeur de quiz</h2>
-    </div>
-    <div class="card">
-      <div class="field">
-        <label>Titre du quiz</label>
-        <input type="text" id="quiz-title-input" placeholder="Ex: Culture générale S2" maxlength="80" />
-      </div>
-      <div class="field">
-        <label>Dossier (optionnel)</label>
-        <input type="text" id="quiz-folder-input" placeholder="Ex: Formation incendie" maxlength="50" />
-      </div>
-    </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-      <div class="section-title" style="margin:0;">Questions</div>
-      <button class="btn btn-primary btn-sm" onclick="addQuestion()">+ Ajouter une question</button>
-    </div>
-    <div id="questions-list"></div>
-    <div style="display:flex;gap:10px;margin-top:20px;">
-      <button class="btn btn-green" onclick="saveQuiz()">💾 Sauvegarder</button>
-      <button class="btn btn-ghost" onclick="closeEditor()">Annuler</button>
-    </div>
-  </div>
-</div>
-
-<!-- PAGE : PARTIE EN COURS -->
-<div class="page" id="page-game">
+<!-- PAGE : PARTIE EN COURS (seule page disponible) -->
+<div class="page active" id="page-game">
 
   <div id="panel-setup" style="display:block;">
     <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:20px;">🚀 Lancer une partie</h2>
@@ -166,7 +91,7 @@
       <div class="timer-num" id="q-timer">⏱ 20</div>
       <div class="q-text-big" id="q-text"></div>
       <div class="choices-display" id="q-choices-display"></div>
-      <!-- Open answers panel (affiché si type=open) -->
+      <!-- Open answers panel -->
       <div id="open-answers-panel" class="hidden" style="margin-top:12px;">
         <div class="section-title" style="margin-bottom:8px;">✏️ Réponses des joueurs</div>
         <div id="open-answers-list"></div>
@@ -207,362 +132,22 @@
 
 <script>
 let quizzes = [];
-let editingQuiz = null;
 let currentGameCode = null;
 let timerInterval = null;
 let gamePaused = false;
 
 const socket = io();
 
-function showTab(tab) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(`page-${tab}`).classList.add('active');
-  event.target.classList.add('active');
-  if (tab === 'game') loadQuizSelect();
-}
-
 async function loadQuizzes() {
   const res = await fetch('/api/quizzes');
   quizzes = await res.json();
-  renderQuizList();
-}
-
-function renderQuizList() {
-  const el = document.getElementById('quiz-list');
-  const filterVal = document.getElementById('folder-filter').value;
-
-  // Mettre à jour le filtre
-  const folders = [...new Set(quizzes.map(q => q.folder || '').filter(f => f))].sort();
-  const filterSel = document.getElementById('folder-filter');
-  const currentFilter = filterSel.value;
-  filterSel.innerHTML = '<option value="">Tous les dossiers</option>' +
-    folders.map(f => `<option value="${esc(f)}" ${currentFilter === f ? 'selected' : ''}>${esc(f)}</option>`).join('');
-
-  let filtered = quizzes;
-  if (filterVal) filtered = quizzes.filter(q => (q.folder || '') === filterVal);
-
-  if (filtered.length === 0) {
-    el.innerHTML = `<div class="empty-state"><div class="big">📝</div><p>Aucun quiz pour l'instant.</p><p style="margin-top:8px;font-size:.85rem;">Créez votre premier quiz !</p></div>`;
-    return;
-  }
-
-  // Grouper par dossier
-  const groups = {};
-  for (const q of filtered) {
-    const folder = q.folder || '';
-    if (!groups[folder]) groups[folder] = [];
-    groups[folder].push(q);
-  }
-
-  const folderKeys = Object.keys(groups).sort((a, b) => {
-    if (a === '') return 1;
-    if (b === '') return -1;
-    return a.localeCompare(b);
-  });
-
-  let html = '';
-  for (const folder of folderKeys) {
-    const label = folder || 'Sans dossier';
-    html += `<div style="margin-bottom:8px;font-size:.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:4px 0;border-bottom:1px solid var(--border);">📁 ${esc(label)}</div>`;
-    html += groups[folder].map(q => `
-      <div class="quiz-card">
-        <div>
-          <div class="quiz-name">${esc(q.title)}</div>
-          <div class="quiz-meta">${q.questions.length} question(s) · Créé le ${new Date(q.createdAt).toLocaleDateString('fr-FR')}</div>
-        </div>
-        <div class="quiz-actions">
-          <button class="btn btn-ghost btn-sm" onclick="editQuiz('${q.id}')">✏️ Éditer</button>
-          <button class="btn btn-ghost btn-sm" onclick="duplicateQuiz('${q.id}')">📋 Dupliquer</button>
-          <button class="btn btn-primary btn-sm" onclick="launchQuiz('${q.id}')">▶ Lancer</button>
-          <button class="btn btn-red btn-sm" onclick="deleteQuiz('${q.id}')">🗑</button>
-        </div>
-      </div>
-    `).join('');
-  }
-  el.innerHTML = html;
-}
-
-async function duplicateQuiz(id) {
-  await fetch(`/api/quizzes/${id}/duplicate`, { method: 'POST' });
-  toast('Quiz dupliqué ✓', 'ok');
-  await loadQuizzes();
+  loadQuizSelect();
 }
 
 function loadQuizSelect() {
   const sel = document.getElementById('quiz-select');
   sel.innerHTML = '<option value="">— Sélectionner un quiz —</option>' +
     quizzes.map(q => `<option value="${q.id}">${esc(q.title)} (${q.questions.length} questions)</option>`).join('');
-}
-
-async function deleteQuiz(id) {
-  if (!confirm('Supprimer ce quiz ?')) return;
-  await fetch(`/api/quizzes/${id}`, { method: 'DELETE' });
-  toast('Quiz supprimé', 'ok');
-  loadQuizzes();
-}
-
-function launchQuiz(id) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-game').classList.add('active');
-  document.getElementById('tab-game').classList.add('active');
-  loadQuizSelect();
-  document.getElementById('quiz-select').value = id;
-}
-
-function newQuiz() {
-  editingQuiz = { id: null, title: '', folder: '', questions: [] };
-  openEditor('Nouveau quiz');
-}
-
-function editQuiz(id) {
-  const q = quizzes.find(q => q.id === id);
-  editingQuiz = JSON.parse(JSON.stringify(q));
-  openEditor(`Éditer : ${q.title}`);
-}
-
-function openEditor(title) {
-  document.getElementById('quiz-list-view').style.display = 'none';
-  document.getElementById('editor').classList.add('open');
-  document.getElementById('editor-title').textContent = title;
-  document.getElementById('quiz-title-input').value = editingQuiz.title;
-  document.getElementById('quiz-folder-input').value = editingQuiz.folder || '';
-  renderQuestionsList();
-}
-
-function closeEditor() {
-  document.getElementById('editor').classList.remove('open');
-  document.getElementById('quiz-list-view').style.display = 'block';
-  editingQuiz = null;
-}
-
-function normalizeQ(q) {
-  if (!q.type) q.type = 'qcm';
-  if (q.choices && q.choices.length > 0 && typeof q.choices[0] === 'string') {
-    q.choices = q.choices.map(c => ({ text: c, image: '' }));
-  }
-  if (q.type === 'poll' || q.type === 'open') {
-    q.correctIndexes = [];
-  } else if (!q.correctIndexes) {
-    q.correctIndexes = (q.correctIndex !== undefined) ? [q.correctIndex] : [0];
-  }
-  return q;
-}
-
-function renderQuestionsList() {
-  const container = document.getElementById('questions-list');
-  if (editingQuiz.questions.length === 0) {
-    container.innerHTML = `<div style="text-align:center;color:var(--muted);padding:30px;">Ajoutez votre première question !</div>`;
-    return;
-  }
-  const colors = ['#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6','#06b6d4'];
-  const labels = ['A','B','C','D','E','F'];
-
-  container.innerHTML = editingQuiz.questions.map((q, qi) => {
-    normalizeQ(q);
-    const type = q.type;
-    const choices = q.choices;
-    const correctIndexes = q.correctIndexes;
-    const isVF = type === 'vrai_faux';
-    const isMulti = type === 'multi';
-    const isPoll = type === 'poll';
-    const isOpen = type === 'open';
-
-    let choicesHtml = '';
-    if (!isOpen) {
-      choicesHtml = choices.map((c, ci) => {
-        const isCorrect = correctIndexes.includes(ci);
-        let inputCtrl = '';
-        if (!isPoll) {
-          inputCtrl = isMulti
-            ? `<input type="checkbox" class="correct-radio" value="${ci}" ${isCorrect?'checked':''} onchange="toggleCorrect(${qi},${ci},this.checked)" title="Bonne réponse" />`
-            : `<input type="radio" class="correct-radio" name="correct-${qi}" value="${ci}" ${isCorrect?'checked':''} onchange="editingQuiz.questions[${qi}].correctIndexes=[${ci}]" title="Bonne réponse" />`;
-        }
-        const removeBtn = (!isVF && !isPoll && choices.length > 2)
-          ? `<button class="btn btn-ghost btn-sm" style="padding:3px 8px;flex-shrink:0;" onclick="removeChoice(${qi},${ci})" title="Supprimer">✕</button>`
-          : '';
-        return `
-          <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">
-            <div class="choice-dot" style="background:${colors[ci]||colors[5]};margin-top:8px;">${labels[ci]||ci+1}</div>
-            <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
-              <input type="text" value="${esc(c.text)}" placeholder="Réponse ${labels[ci]||ci+1}"
-                oninput="editingQuiz.questions[${qi}].choices[${ci}].text=this.value"
-                ${isVF?'readonly style="opacity:.6;cursor:default"':''} />
-              <input type="url" value="${esc(c.image||'')}" placeholder="URL image pour ce choix (optionnel)"
-                style="font-size:.8rem;"
-                oninput="editingQuiz.questions[${qi}].choices[${ci}].image=this.value" />
-            </div>
-            ${inputCtrl}
-            ${removeBtn}
-          </div>`;
-      }).join('');
-    }
-
-    const addChoiceBtn = (!isVF && !isPoll && !isOpen && choices.length < 6)
-      ? `<button class="btn btn-ghost btn-sm" style="margin-top:4px;" onclick="addChoice(${qi})">+ Ajouter une réponse</button>`
-      : '';
-
-    const choicesSection = isOpen
-      ? `<div style="color:var(--muted);font-size:.85rem;padding:8px 0;">Les joueurs tapent leur réponse librement. Vous validerez manuellement pendant la partie.</div>`
-      : `<div class="field">
-          <label>${isMulti ? 'Réponses — cochez toutes les bonnes réponses ✓' : isPoll ? 'Choix du sondage' : 'Réponses — cochez la bonne réponse ✓'}</label>
-          ${choicesHtml}
-          ${addChoiceBtn}
-        </div>`;
-
-    return `
-      <div class="question-item" id="q-item-${qi}">
-        <div class="question-header">
-          <span class="q-num">Question ${qi + 1}</span>
-          <div style="display:flex;gap:6px;">
-            ${qi > 0 ? `<button class="btn btn-ghost btn-sm" onclick="moveQ(${qi},-1)">↑</button>` : ''}
-            ${qi < editingQuiz.questions.length-1 ? `<button class="btn btn-ghost btn-sm" onclick="moveQ(${qi},1)">↓</button>` : ''}
-            <button class="btn btn-red btn-sm" onclick="removeQ(${qi})">✕</button>
-          </div>
-        </div>
-
-        <div class="field">
-          <label>Type de question</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="type-btn ${type==='qcm'?'active':''}" onclick="setQuestionType(${qi},'qcm')">📝 QCM</button>
-            <button class="type-btn ${type==='vrai_faux'?'active':''}" onclick="setQuestionType(${qi},'vrai_faux')">✅ Vrai / Faux</button>
-            <button class="type-btn ${type==='multi'?'active':''}" onclick="setQuestionType(${qi},'multi')">☑️ Plusieurs bonnes réponses</button>
-            <button class="type-btn ${type==='poll'?'active':''}" onclick="setQuestionType(${qi},'poll')">📊 Sondage</button>
-            <button class="type-btn ${type==='open'?'active':''}" onclick="setQuestionType(${qi},'open')">✏️ Texte libre</button>
-          </div>
-        </div>
-
-        <div class="field">
-          <label>Énoncé de la question</label>
-          <textarea oninput="editingQuiz.questions[${qi}].text=this.value" rows="2">${esc(q.text)}</textarea>
-        </div>
-        <div class="field">
-          <label>Image pour la question (URL, optionnel)</label>
-          <input type="url" value="${esc(q.image||'')}" placeholder="https://..." oninput="editingQuiz.questions[${qi}].image=this.value" />
-        </div>
-        <div class="row">
-          <div class="field">
-            <label>Temps (secondes)</label>
-            <input type="number" value="${q.timeLimit||20}" min="5" max="120" style="width:90px" oninput="editingQuiz.questions[${qi}].timeLimit=+this.value" />
-          </div>
-          <div class="field" style="display:flex;align-items:center;gap:8px;margin-top:8px;">
-            <input type="checkbox" id="dp-${qi}" ${q.doublePoints?'checked':''} onchange="editingQuiz.questions[${qi}].doublePoints=this.checked" style="width:auto;margin:0;" />
-            <label for="dp-${qi}" style="margin:0;text-transform:none;font-size:.85rem;cursor:pointer;">✨ Points x2 pour cette question</label>
-          </div>
-        </div>
-        ${choicesSection}
-        <div class="field">
-          <label>Explication après la réponse (optionnel)</label>
-          <input type="text" value="${esc(q.explanation||'')}" placeholder="Explication..." oninput="editingQuiz.questions[${qi}].explanation=this.value" />
-        </div>
-      </div>`;
-  }).join('');
-}
-
-function setQuestionType(qi, type) {
-  const q = editingQuiz.questions[qi];
-  normalizeQ(q);
-  q.type = type;
-  if (type === 'vrai_faux') {
-    q.choices = [{ text: 'Vrai', image: '' }, { text: 'Faux', image: '' }];
-    q.correctIndexes = [0];
-  } else if (type === 'qcm' && q.correctIndexes.length > 1) {
-    q.correctIndexes = [q.correctIndexes[0]];
-  } else if (type === 'poll' || type === 'open') {
-    q.correctIndexes = [];
-    if (type === 'open') {
-      q.choices = [];
-    } else if (!q.choices || q.choices.length < 2) {
-      q.choices = [
-        { text: '', image: '' }, { text: '', image: '' },
-        { text: '', image: '' }, { text: '', image: '' }
-      ];
-    }
-  }
-  renderQuestionsList();
-}
-
-function addChoice(qi) {
-  const q = editingQuiz.questions[qi];
-  normalizeQ(q);
-  if (q.choices.length >= 6) return;
-  q.choices.push({ text: '', image: '' });
-  renderQuestionsList();
-}
-
-function removeChoice(qi, ci) {
-  const q = editingQuiz.questions[qi];
-  normalizeQ(q);
-  if (q.choices.length <= 2) return;
-  q.choices.splice(ci, 1);
-  q.correctIndexes = q.correctIndexes.filter(i => i < q.choices.length);
-  if (q.correctIndexes.length === 0) q.correctIndexes = [0];
-  renderQuestionsList();
-}
-
-function toggleCorrect(qi, ci, checked) {
-  const q = editingQuiz.questions[qi];
-  if (!q.correctIndexes) q.correctIndexes = [];
-  if (checked) {
-    if (!q.correctIndexes.includes(ci)) q.correctIndexes.push(ci);
-  } else {
-    q.correctIndexes = q.correctIndexes.filter(i => i !== ci);
-    if (q.correctIndexes.length === 0) q.correctIndexes = [ci];
-  }
-}
-
-function addQuestion() {
-  editingQuiz.questions.push({
-    text: '', type: 'qcm',
-    choices: [{ text: '', image: '' }, { text: '', image: '' }, { text: '', image: '' }, { text: '', image: '' }],
-    correctIndexes: [0], timeLimit: 20, image: '', explanation: '', doublePoints: false
-  });
-  renderQuestionsList();
-  setTimeout(() => {
-    document.querySelector(`#q-item-${editingQuiz.questions.length - 1}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 100);
-}
-
-function removeQ(idx) {
-  if (!confirm('Supprimer cette question ?')) return;
-  editingQuiz.questions.splice(idx, 1);
-  renderQuestionsList();
-}
-
-function moveQ(idx, dir) {
-  const qs = editingQuiz.questions;
-  const ni = idx + dir;
-  if (ni < 0 || ni >= qs.length) return;
-  [qs[idx], qs[ni]] = [qs[ni], qs[idx]];
-  renderQuestionsList();
-}
-
-async function saveQuiz() {
-  const title = document.getElementById('quiz-title-input').value.trim();
-  if (!title) return toast('Titre requis', 'err');
-  editingQuiz.folder = document.getElementById('quiz-folder-input').value.trim();
-  for (const [i, q] of editingQuiz.questions.entries()) {
-    normalizeQ(q);
-    if (!q.text.trim()) return toast(`Question ${i+1} : énoncé vide`, 'err');
-    if (q.type !== 'open') {
-      for (const [ci, c] of q.choices.entries()) {
-        if (!c.text.trim() && !c.image.trim())
-          return toast(`Question ${i+1} : la réponse ${ci+1} doit avoir un texte ou une image`, 'err');
-      }
-      if (q.type !== 'poll' && (!q.correctIndexes || q.correctIndexes.length === 0))
-        return toast(`Question ${i+1} : aucune bonne réponse sélectionnée`, 'err');
-    }
-    // Nettoyer l'ancien champ
-    delete q.correctIndex;
-  }
-  editingQuiz.title = title;
-  const method = editingQuiz.id ? 'PUT' : 'POST';
-  const url = editingQuiz.id ? `/api/quizzes/${editingQuiz.id}` : '/api/quizzes';
-  await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editingQuiz) });
-  toast('Quiz sauvegardé ✓', 'ok');
-  await loadQuizzes();
-  closeEditor();
 }
 
 function createGame() {
@@ -642,7 +227,6 @@ socket.on('question:start', data => {
   window._qData = data;
 });
 
-// Réponses texte libre reçues de l'admin
 socket.on('open:answer', ({ playerId, name, text }) => {
   const openList = document.getElementById('open-answers-list');
   const div = document.createElement('div');
@@ -653,7 +237,6 @@ socket.on('open:answer', ({ playerId, name, text }) => {
     <button class="btn btn-green btn-sm" style="flex-shrink:0;" onclick="validateOpen('${playerId}', 500, this)">✓ +500pts</button>
     <button class="btn btn-ghost btn-sm" style="flex-shrink:0;" onclick="validateOpen('${playerId}', 0, this)">✕ 0pt</button>
   `;
-  // Remplacer placeholder si présent
   const placeholder = openList.querySelector('div[style*="muted"]');
   if (placeholder) placeholder.remove();
   openList.appendChild(div);
@@ -671,7 +254,6 @@ socket.on('answers:progress', ({ answered, total }) => {
 
 function stopQuestion() { socket.emit('admin:stop-q', { code: currentGameCode }); }
 
-// Pause / Reprise
 function togglePause() {
   if (!gamePaused) {
     socket.emit('admin:pause', { code: currentGameCode });
@@ -709,7 +291,6 @@ socket.on('question:results', data => {
   const colors = ['var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)','var(--c6)'];
   const correctIndexes = data.correctIndexes || [];
   const maxCount = Math.max(...(data.counts || [0]), 1);
-
   const isPoll = data.type === 'poll';
   const isOpen = data.type === 'open';
 
@@ -728,7 +309,6 @@ socket.on('question:results', data => {
   }
 
   if (isOpen) {
-    // Afficher les réponses ouvertes
     const openAnswers = data.openAnswers || [];
     document.getElementById('answer-bars').innerHTML = openAnswers.length === 0
       ? '<div style="color:var(--muted);">Aucune réponse reçue.</div>'
@@ -799,103 +379,7 @@ async function logout() {
   window.location.href = '/login.html';
 }
 
-// ── Import depuis texte ──────────────────────────────────────
-function openImportModal() {
-  document.getElementById('import-modal').classList.remove('hidden');
-  document.getElementById('import-textarea').focus();
-}
-
-function closeImportModal() {
-  document.getElementById('import-modal').classList.add('hidden');
-}
-
-function parseQuizText(text) {
-  const lines = text.split('\n').map(l => l.trim());
-  const questions = [];
-  let i = 0;
-
-  while (i < lines.length) {
-    const header = lines[i].match(/^\d+\.\s*(.+)/);
-    if (!header) { i++; continue; }
-
-    const typeRaw = header[1].toLowerCase();
-    let type = 'qcm';
-    if (typeRaw.includes('vrai')) type = 'vrai_faux';
-    else if (typeRaw.includes('multi')) type = 'multi';
-    i++;
-
-    let questionText = '';
-    const choices = [];
-    const correctIndexes = [];
-
-    while (i < lines.length) {
-      const line = lines[i];
-      if (/^\d+\.\s/.test(line)) break;
-
-      const ok  = line.match(/^✅\s*(.*)/);
-      const bad = line.match(/^❌\s*(.*)/);
-
-      if (ok) {
-        correctIndexes.push(choices.length);
-        choices.push({ text: ok[1].trim(), image: '' });
-      } else if (bad) {
-        choices.push({ text: bad[1].trim(), image: '' });
-      } else if (line.length > 0) {
-        questionText += (questionText ? '\n' : '') + line;
-      }
-      i++;
-    }
-
-    if (!questionText.trim() || choices.length === 0) continue;
-
-    if (correctIndexes.length > 1) type = 'multi';
-    if (type === 'vrai_faux' ||
-        (choices.length === 2 &&
-         choices.some(c => c.text.toLowerCase() === 'vrai') &&
-         choices.some(c => c.text.toLowerCase() === 'faux'))) {
-      type = 'vrai_faux';
-    }
-
-    questions.push({
-      text: questionText.trim(),
-      type,
-      choices,
-      correctIndexes: correctIndexes.length ? correctIndexes : [0],
-      timeLimit: 20,
-      image: '',
-      explanation: '',
-      doublePoints: false,
-    });
-  }
-
-  return questions;
-}
-
-async function runImport() {
-  const title = document.getElementById('import-title').value.trim();
-  const text  = document.getElementById('import-textarea').value;
-
-  if (!title) return toast('Donne un titre au quiz', 'err');
-  if (!text.trim()) return toast('Colle du texte à importer', 'err');
-
-  const questions = parseQuizText(text);
-  if (questions.length === 0) return toast('Aucune question détectée — vérifie le format', 'err');
-
-  const quiz = { title, questions };
-  await fetch('/api/quizzes', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(quiz),
-  });
-
-  closeImportModal();
-  document.getElementById('import-title').value = '';
-  document.getElementById('import-textarea').value = '';
-  toast(`${questions.length} question(s) importée(s) ✓`, 'ok');
-  await loadQuizzes();
-}
-
-// ── Moteur Audio (admin) — 3 pistes qui alternent ────────────
+// ── Moteur Audio ─────────────────────────────────────────────
 const Audio = (() => {
   let ctx, mGain, sGain;
   let musicOn = true, sfxOn = true;
