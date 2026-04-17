@@ -6,6 +6,62 @@
 <title>Alertis Quiz — Admin</title>
 <link rel="stylesheet" href="/css/admin.css" />
 <link rel="stylesheet" href="/css/floaters.css" />
+<style>
+#game-split { display:flex; gap:16px; align-items:flex-start; }
+#game-controls { flex:1; min-width:0; }
+#display-pane {
+  flex:0 0 46%; display:none; flex-direction:column;
+  background:linear-gradient(160deg,#1a2f50 0%,#0f1e35 100%);
+  border-radius:16px; overflow:hidden;
+  border:1.5px solid rgba(255,255,255,.12);
+  height:calc(100vh - 90px); position:sticky; top:16px; color:#fff;
+}
+#display-pane.open { display:flex; }
+#display-pane-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; flex-shrink:0;
+  background:rgba(255,255,255,.06); border-bottom:1px solid rgba(255,255,255,.08);
+  font-size:.8rem; font-weight:700; color:rgba(255,255,255,.6);
+}
+.dscreen { display:none; flex-direction:column; align-items:center; justify-content:center; padding:20px; flex:1; gap:14px; overflow:hidden; }
+.dscreen.active { display:flex; }
+.d-code { font-size:3.8rem; font-weight:900; letter-spacing:8px; text-shadow:0 4px 20px rgba(249,115,22,.4); }
+.d-pcount { color:#6AA5E8; font-size:1rem; font-weight:700; }
+.d-qr { border-radius:12px; border:4px solid rgba(255,255,255,.15); width:140px; }
+.d-counter { background:rgba(255,255,255,.12); border-radius:20px; padding:4px 14px; font-size:.85rem; font-weight:700; }
+.d-timer { font-size:2.8rem; font-weight:900; }
+.d-timer.urgent { color:#ef4444; animation:shake .3s infinite; }
+@keyframes shake { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-2deg)} 75%{transform:rotate(2deg)} }
+.d-progress { height:5px; background:rgba(255,255,255,.15); border-radius:3px; width:100%; }
+.d-progress-fill { height:100%; background:linear-gradient(90deg,#F97316,#6AA5E8); border-radius:3px; transition:width 1s linear; }
+.d-q-text { font-size:1.5rem; font-weight:900; text-align:center; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:16px 20px; width:100%; line-height:1.3; }
+.d-choices { display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%; }
+.d-choice { border-radius:10px; padding:12px 14px; font-size:.95rem; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px; min-height:52px; }
+.d-choice:nth-child(1){background:linear-gradient(145deg,#f43f5e,#e11d48)}
+.d-choice:nth-child(2){background:linear-gradient(145deg,#6AA5E8,#2A4E7A)}
+.d-choice:nth-child(3){background:linear-gradient(145deg,#10b981,#047857)}
+.d-choice:nth-child(4){background:linear-gradient(145deg,#f59e0b,#b45309)}
+.d-choice:nth-child(5){background:linear-gradient(145deg,#8b5cf6,#6d28d9)}
+.d-choice:nth-child(6){background:linear-gradient(145deg,#06b6d4,#0e7490)}
+.d-res-title { font-size:1rem; font-weight:900; text-align:center; }
+.d-bars { display:flex; flex-direction:column; gap:8px; width:100%; }
+.d-bar-row { display:flex; align-items:center; gap:8px; transition:opacity .4s,transform .4s; }
+.d-bar-row.wrong { opacity:.3; }
+.d-bar-row.correct { transform:scale(1.04); filter:drop-shadow(0 0 14px rgba(16,185,129,.9)); animation:cpulse 1.2s ease-in-out infinite alternate; }
+@keyframes cpulse { from{filter:drop-shadow(0 0 10px rgba(16,185,129,.7))} to{filter:drop-shadow(0 0 26px rgba(16,185,129,1))} }
+.d-bar-lbl { width:120px; font-size:.78rem; font-weight:700; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.d-bar-row.correct .d-bar-lbl { color:#6ee7b7; }
+.d-bar-fill { height:34px; border-radius:8px; display:flex; align-items:center; padding:0 10px; font-size:.85rem; font-weight:800; color:#fff; min-width:34px; transition:width .7s cubic-bezier(.22,.68,0,1.2); }
+.d-bar-fill.correct { background:linear-gradient(90deg,#10b981,#34d399)!important; height:42px; box-shadow:0 0 0 2px #fff,0 0 20px rgba(16,185,129,.7); }
+.d-podium { display:flex; gap:10px; justify-content:center; align-items:flex-end; }
+.d-pod-item { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.d-pod-bar { width:60px; background:rgba(255,255,255,.15); border-radius:7px 7px 0 0; display:flex; align-items:flex-end; justify-content:center; padding-bottom:5px; font-size:1.6rem; }
+.d-pod-name { font-weight:800; font-size:.75rem; text-align:center; max-width:70px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.d-pod-score { font-size:.7rem; color:#F97316; font-weight:700; }
+.d-lb { list-style:none; width:100%; padding:0; }
+.d-lb-row { display:flex; align-items:center; gap:10px; padding:8px 14px; border-radius:10px; margin-bottom:5px; background:rgba(255,255,255,.1); }
+.d-lb-row:nth-child(1){background:rgba(249,115,22,.2)} .d-lb-row:nth-child(2){background:rgba(106,165,232,.2)} .d-lb-row:nth-child(3){background:rgba(245,158,11,.15)}
+</style>
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 </head>
@@ -120,6 +176,8 @@
 
 <!-- PAGE : PARTIE EN COURS -->
 <div class="page" id="page-game">
+<div id="game-split">
+<div id="game-controls">
 
   <div id="panel-setup" style="display:block;">
     <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:20px;">🚀 Lancer une partie</h2>
@@ -215,7 +273,42 @@
     </div>
   </div>
 
+</div><!-- /game-controls -->
+
+<div id="display-pane">
+  <div id="display-pane-header">
+    <span>📺 Affichage projecteur</span>
+    <button class="btn btn-ghost btn-sm" onclick="closeDisplay()">✕</button>
+  </div>
+  <div class="dscreen active" id="dscreen-waiting">
+    <div class="d-code" id="d-code">------</div>
+    <div class="d-pcount" id="d-pcount">0 joueur(s)</div>
+    <img class="d-qr" id="d-qr" src="" alt="" />
+  </div>
+  <div class="dscreen" id="dscreen-question">
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+      <span class="d-counter" id="d-q-counter">Q 1/1</span>
+      <span class="d-timer" id="d-timer">30</span>
+    </div>
+    <div class="d-progress"><div class="d-progress-fill" id="d-progress-fill" style="width:100%"></div></div>
+    <img id="d-q-img" src="" alt="" style="display:none;max-height:120px;border-radius:10px;object-fit:cover;" />
+    <div class="d-q-text" id="d-q-text">…</div>
+    <div class="d-choices" id="d-choices"></div>
+  </div>
+  <div class="dscreen" id="dscreen-results">
+    <div class="d-res-title" id="d-res-title">Résultats</div>
+    <div class="d-bars" id="d-bars"></div>
+    <div class="d-podium" id="d-podium"></div>
+  </div>
+  <div class="dscreen" id="dscreen-end">
+    <div style="font-size:2.5rem;">🏆</div>
+    <div style="font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#F97316,#6AA5E8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Partie terminée !</div>
+    <ul class="d-lb" id="d-lb"></ul>
+  </div>
 </div>
+
+</div><!-- /game-split -->
+</div><!-- /page-game -->
 
 <script>
 let quizzes = [];
@@ -657,11 +750,15 @@ function createGame() {
 socket.on('admin:created', async ({ code }) => {
   currentGameCode = code;
   document.getElementById('game-code-display').textContent = code;
+  document.getElementById('d-code').textContent = code;
   showPanel('waiting');
+  showDscreen('waiting');
+  openDisplay();
   const res = await fetch(`/api/qr/${code}`);
   const data = await res.json();
   document.getElementById('qr-img').src = data.qr;
   document.getElementById('join-url').textContent = data.url;
+  document.getElementById('d-qr').src = data.qr;
   window._joinUrl = data.url;
 });
 
@@ -671,12 +768,13 @@ function copyJoinUrl() {
 }
 
 socket.on('players:update', players => {
-  document.getElementById('players-grid').innerHTML = players.map(p => `
-    <div class="player-chip">${esc(p.name)}<button onclick="kickPlayer('${p.id}')" title="Expulser">✕</button></div>
-  `).join('');
+  document.getElementById('players-grid').innerHTML = players.map(p =>
+    `<div class="player-chip">${esc(p.name)}<button onclick="kickPlayer('${p.id}')" title="Expulser">✕</button></div>`
+  ).join('');
   const count = players.length;
   document.getElementById('player-count').textContent = `${count} joueur(s)`;
   document.getElementById('btn-start').disabled = count === 0;
+  document.getElementById('d-pcount').textContent = `${count} joueur${count>1?'s':''} connecté${count>1?'s':''}`;
 });
 
 function kickPlayer(id) { socket.emit('admin:kick', { code: currentGameCode, playerId: id }); }
@@ -714,14 +812,33 @@ socket.on('question:start', data => {
       : esc(ch.text);
     return `<div class="choice-box ${colorClasses[i] || 'c0'}">${labels[i] || (i+1)} ${content}</div>`;
   }).join('');
+  // Display panel — question
+  const dShapes = ['▲','◆','●','★','✦','◉'];
+  document.getElementById('d-q-counter').textContent = `Q ${data.index+1}/${data.total}`;
+  document.getElementById('d-q-text').textContent = data.text;
+  const dImg = document.getElementById('d-q-img');
+  if (data.image) { dImg.src = data.image; dImg.style.display = 'block'; } else dImg.style.display = 'none';
+  document.getElementById('d-choices').innerHTML = (data.choices||[]).map((c,i) => {
+    const ch = typeof c==='string'?{text:c}:c;
+    return `<div class="d-choice"><span>${dShapes[i]||i+1}</span><span>${esc(ch.text)}</span></div>`;
+  }).join('');
+  showDscreen('question');
+
   if (timerInterval) clearInterval(timerInterval);
   let t = data.timeLimit;
   document.getElementById('q-timer').textContent = `⏱ ${t}`;
   document.getElementById('q-progress-bar').style.width = '100%';
+  document.getElementById('d-timer').textContent = t;
+  document.getElementById('d-timer').className = 'd-timer';
+  document.getElementById('d-progress-fill').style.width = '100%';
   timerInterval = setInterval(() => {
     t--;
-    document.getElementById('q-timer').textContent = `⏱ ${Math.max(0, t)}`;
-    document.getElementById('q-progress-bar').style.width = Math.max(0, t / data.timeLimit * 100) + '%';
+    const v = Math.max(0, t);
+    document.getElementById('q-timer').textContent = `⏱ ${v}`;
+    document.getElementById('q-progress-bar').style.width = v / data.timeLimit * 100 + '%';
+    document.getElementById('d-timer').textContent = v;
+    document.getElementById('d-timer').className = 'd-timer' + (v<=5?' urgent':'');
+    document.getElementById('d-progress-fill').style.width = v / data.timeLimit * 100 + '%';
     if (t <= 0) clearInterval(timerInterval);
   }, 1000);
   window._qData = data;
@@ -770,6 +887,7 @@ socket.on('game:paused', ({ remaining }) => {
   if (timerInterval) clearInterval(timerInterval);
   document.getElementById('btn-pause').textContent = '▶ Reprendre';
   document.getElementById('q-timer').textContent = `⏸ ${remaining}`;
+  document.getElementById('d-timer').textContent = `⏸${remaining}`;
 });
 
 socket.on('game:resumed', ({ remaining }) => {
@@ -778,11 +896,16 @@ socket.on('game:resumed', ({ remaining }) => {
   const data = window._qData;
   let t = remaining;
   document.getElementById('q-timer').textContent = `⏱ ${t}`;
+  document.getElementById('d-timer').textContent = t;
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = setInterval(() => {
     t--;
-    document.getElementById('q-timer').textContent = `⏱ ${Math.max(0, t)}`;
-    document.getElementById('q-progress-bar').style.width = Math.max(0, t / (data?.timeLimit||30) * 100) + '%';
+    const v = Math.max(0, t);
+    document.getElementById('q-timer').textContent = `⏱ ${v}`;
+    document.getElementById('q-progress-bar').style.width = v / (data?.timeLimit||30) * 100 + '%';
+    document.getElementById('d-timer').textContent = v;
+    document.getElementById('d-timer').className = 'd-timer' + (v<=5?' urgent':'');
+    document.getElementById('d-progress-fill').style.width = v / (data?.timeLimit||30) * 100 + '%';
     if (t <= 0) clearInterval(timerInterval);
   }, 1000);
 });
@@ -842,13 +965,45 @@ socket.on('question:results', data => {
     `<li class="lb-row"><span class="lb-rank">${['🥇','🥈','🥉'][p.rank-1]||'#'+p.rank}</span><span class="lb-name">${esc(p.name)}</span><span class="lb-score">${p.score.toLocaleString('fr-FR')} pts</span></li>`
   ).join('');
   document.getElementById('btn-next').textContent = data.isLast ? '🏁 Voir le classement final' : 'Suivant ▶';
+
+  // Display panel — résultats
+  const dColors = ['#ef4444','#6AA5E8','#10b981','#f59e0b','#8b5cf6','#06b6d4'];
+  const dChoices = (window._qData?.choices||[]);
+  const dMax = Math.max(...(data.counts||[0]),1);
+  if (isPoll) document.getElementById('d-res-title').textContent = '📊 Sondage';
+  else if (isOpen) document.getElementById('d-res-title').textContent = '✏️ Réponses libres';
+  else {
+    const ct = correctIndexes.map(ci=>{ const c=dChoices[ci]; return c?(typeof c==='string'?c:(c.text||`Choix ${ci+1}`)): `Choix ${ci+1}`; });
+    document.getElementById('d-res-title').textContent = `✅ ${ct.map(t=>esc(t)).join(', ')}`;
+  }
+  document.getElementById('d-bars').innerHTML = dChoices.map((c,i) => {
+    const ch = typeof c==='string'?{text:c}:c;
+    const isC = !isPoll&&!isOpen&&correctIndexes.includes(i);
+    const cnt = (data.counts||[])[i]||0;
+    const pct = Math.max(Math.round(cnt/dMax*100),cnt>0?4:0);
+    const rowCls = (!isPoll&&!isOpen)?(isC?'correct':'wrong'):'';
+    return `<div class="d-bar-row ${rowCls}">
+      <div class="d-bar-lbl">${isC?'✅ ':''}${esc(ch.text||`Choix ${i+1}`)}</div>
+      <div class="d-bar-fill ${isC?'correct':''}" style="background:${dColors[i]||dColors[5]};width:${pct}%">${isC?'✔ ':''}${cnt}</div>
+    </div>`;
+  }).join('');
+  const lb = (data.leaderboard||[]).slice(0,3);
+  const pods = [{p:lb[1],e:'🥈',h:'80px'},{p:lb[0],e:'🥇',h:'110px'},{p:lb[2],e:'🥉',h:'60px'}].filter(s=>s.p);
+  document.getElementById('d-podium').innerHTML = pods.map(s=>`<div class="d-pod-item">
+    <div class="d-pod-bar" style="height:${s.h}">${s.e}</div>
+    <div class="d-pod-name">${esc(s.p.name)}</div>
+    <div class="d-pod-score">${s.p.score.toLocaleString('fr-FR')} pts</div>
+  </div>`).join('');
+  showDscreen('results');
 });
 
 function nextQuestion() { socket.emit('admin:next', { code: currentGameCode }); }
 function endGameAdmin() { if (!confirm('Terminer la partie ?')) return; socket.emit('admin:end-game', { code: currentGameCode }); }
-function openDisplay() {
-  if (!currentGameCode) return toast('Lance d\'abord une partie', 'err');
-  window.open(`/display?code=${currentGameCode}`, '_blank', 'width=1280,height=720,menubar=no,toolbar=no');
+function openDisplay() { document.getElementById('display-pane').classList.add('open'); }
+function closeDisplay() { document.getElementById('display-pane').classList.remove('open'); }
+function showDscreen(name) {
+  document.querySelectorAll('.dscreen').forEach(s => s.classList.remove('active'));
+  document.getElementById('dscreen-' + name).classList.add('active');
 }
 
 socket.on('game:end', ({ leaderboard }) => {
@@ -861,9 +1016,13 @@ socket.on('game:end', ({ leaderboard }) => {
   document.getElementById('end-leaderboard').innerHTML = leaderboard.slice(0,10).map(p =>
     `<li class="lb-row"><span class="lb-rank">${['🥇','🥈','🥉'][p.rank-1]||'#'+p.rank}</span><span class="lb-name">${esc(p.name)}</span><span class="lb-score">${p.score.toLocaleString('fr-FR')} pts</span></li>`
   ).join('');
+  document.getElementById('d-lb').innerHTML = leaderboard.slice(0,8).map(p =>
+    `<li class="d-lb-row"><span style="font-size:1.2rem">${['🥇','🥈','🥉'][p.rank-1]||'#'+p.rank}</span><span style="flex:1;font-weight:800">${esc(p.name)}</span><span style="color:#F97316;font-weight:900">${p.score.toLocaleString('fr-FR')} pts</span></li>`
+  ).join('');
+  showDscreen('end');
 });
 
-function resetGame() { currentGameCode = null; gamePaused = false; showPanel('setup'); loadQuizSelect(); }
+function resetGame() { currentGameCode = null; gamePaused = false; closeDisplay(); showPanel('setup'); loadQuizSelect(); }
 socket.on('error', msg => toast(msg, 'err'));
 
 function showPanel(name) {
