@@ -536,10 +536,8 @@ io.on('connection', socket => {
     const g = games[code];
 
     if (role === 'admin') {
-      io.to(`g:${code}`).emit('game:aborted');
-      if (g.qTimer) clearTimeout(g.qTimer);
-      delete games[code];
-      console.log(`[GAME] Partie ${code} abandonnée (admin parti)`);
+      // On ne supprime plus la partie ici car l'admin est redirigé vers /display
+      console.log(`[GAME] Admin déconnecté de ${code} (transfert vers display possible)`);
     } else if (role === 'player') {
       const name = g.players[socket.id]?.name;
       delete g.players[socket.id];
