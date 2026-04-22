@@ -40,12 +40,19 @@ body {
 #screen-waiting { gap: 32px; }
 .waiting-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; width: 100%; max-width: 1100px; }
 .waiting-code-block { text-align: center; }
-.waiting-label { font-size: 1rem; font-weight: 700; color: rgba(255,255,255,.55); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 12px; }
-.code-big { font-size: 7rem; font-weight: 900; letter-spacing: 16px; color: #fff; line-height: 1; text-shadow: 0 4px 30px rgba(249,115,22,.4); }
-.player-count-big { font-size: 1.5rem; font-weight: 700; color: var(--blue); margin-top: 20px; }
+.waiting-label { font-size: 1rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 12px; }
+.code-big {
+  font-size: 7rem; font-weight: 900; letter-spacing: 16px;
+  background: linear-gradient(135deg, #F97316 0%, #6AA5E8 60%, #2A4E7A 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  line-height: 1; text-shadow: 0 4px 30px rgba(249,115,22,0);
+}
+.player-count-big { font-size: 1.5rem; font-weight: 700; color: #fff; margin-top: 20px; }
+
 .qr-block { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 .qr-block img { border-radius: 18px; border: 6px solid rgba(255,255,255,.15); box-shadow: 0 8px 40px rgba(0,0,0,.4); width: 260px; }
-.url-display { font-size: .9rem; color: rgba(255,255,255,.45); text-align: center; word-break: break-all; max-width: 280px; }
+.url-display { font-size: .9rem; color: #fff; text-align: center; word-break: break-all; max-width: 280px; }
+
 
 /* ── QUESTION ────────────────────────────────────── */
 #screen-question { gap: 24px; }
@@ -144,7 +151,8 @@ body {
 .cbtn-blue  { background: linear-gradient(135deg,#6AA5E8,#2A4E7A); color:#fff; }
 .cbtn-ghost { background: rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.2); }
 .ctrl-sep { flex:1; }
-.ctrl-progress { font-size:.9rem; color:rgba(255,255,255,.55); font-weight:700; }
+.ctrl-progress { font-size:.9rem; color: #fff; font-weight: 700; }
+
 
 /* ── PLAYERS LIST (waiting) ──────────────────────────── */
 .players-list-d { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:900px; margin-top:8px; }
@@ -152,10 +160,12 @@ body {
 
 /* ── COUNTDOWN ───────────────────────────────────────── */
 #screen-countdown { gap:20px; }
-.cd-label { font-size:1.2rem; font-weight:700; color:rgba(255,255,255,.6); text-transform:uppercase; letter-spacing:.1em; }
+.cd-label { font-size:1.2rem; font-weight:700; color: #fff; text-transform:uppercase; letter-spacing:.1em; }
+
 .cd-num { font-size:12rem; font-weight:900; line-height:1; background:linear-gradient(135deg,#F97316,#6AA5E8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; animation:cd-pop .5s cubic-bezier(.22,.68,0,1.2) both; }
 @keyframes cd-pop { from{transform:scale(1.8);opacity:0} to{transform:scale(1);opacity:1} }
-.cd-q-preview { font-size:1.1rem; color:rgba(255,255,255,.5); text-align:center; max-width:700px; }
+.cd-q-preview { font-size:1.1rem; color: #fff; text-align:center; max-width:700px; }
+
 
 /* ── OPEN ANSWERS OVERLAY ────────────────────────────── */
 .open-answers-d { display:flex; flex-direction:column; gap:8px; width:100%; max-width:800px; max-height:35vh; overflow-y:auto; }
@@ -180,9 +190,36 @@ body {
 /* ── Progress bar ────────────────────────────────── */
 .q-progress-d { height: 8px; background: rgba(255,255,255,.15); border-radius: 4px; width: 100%; max-width: 1000px; overflow: hidden; }
 .q-progress-fill-d { height: 100%; background: linear-gradient(90deg,var(--orange),var(--blue)); border-radius: 4px; transition: width 1s linear; }
+
+/* ── QR OVERLAY ──────────────────────────────────── */
+#qr-overlay {
+  position: fixed; inset: 0; background: rgba(10,18,35,.98); backdrop-filter: blur(20px);
+  z-index: 200; display: none; flex-direction: column; align-items: center; justify-content: center;
+  gap: 40px; cursor: zoom-out; animation: fade-in .3s ease both;
+}
+#qr-overlay.active { display: flex; }
+.qr-large { width: 85vh; height: 85vh; max-width: 600px; max-height: 600px; border-radius: 30px; border: 10px solid #fff; box-shadow: 0 0 60px rgba(0,0,0,.6); }
+.qr-large-code {
+  font-size: 8rem; font-weight: 900; letter-spacing: 20px;
+  background: linear-gradient(135deg, #F97316 0%, #6AA5E8 60%, #2A4E7A 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 40px rgba(249,115,22,0);
+}
+
+.qr-block img { cursor: zoom-in; transition: transform .2s; }
+.qr-block img:hover { transform: scale(1.03); }
+
 </style>
 </head>
 <body>
+
+<!-- QR OVERLAY -->
+<div id="qr-overlay" onclick="toggleQROverlay()">
+  <div class="qr-large-code" id="d-qr-large-code">------</div>
+  <img src="" alt="Large QR" class="qr-large" id="d-qr-large" />
+  <div style="font-size:1.5rem;color:rgba(255,255,255,.5);font-weight:700;">Cliquez n'importe où pour fermer</div>
+</div>
+
 
 <!-- IDLE -->
 <div class="screen active" id="screen-idle">
@@ -201,7 +238,7 @@ body {
     </div>
     <div class="qr-block">
       <div class="waiting-label">Rejoindre</div>
-      <img id="d-qr" src="" alt="QR Code" />
+      <img id="d-qr" src="" alt="QR Code" onclick="toggleQROverlay()" />
       <div class="url-display" id="d-url"></div>
     </div>
   </div>
@@ -301,6 +338,12 @@ function validateOpen(playerId, pts, btn) {
   btn.closest('.open-ans-row').querySelectorAll('button').forEach(b => b.disabled = true);
 }
 
+function toggleQROverlay() {
+  const overlay = document.getElementById('qr-overlay');
+  overlay.classList.toggle('active');
+}
+
+
 function esc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -312,8 +355,10 @@ if (code) {
   // Charger QR code
   fetch(`/api/qr/${code}`).then(r => r.json()).then(data => {
     document.getElementById('d-qr').src = data.qr;
+    document.getElementById('d-qr-large').src = data.qr;
     document.getElementById('d-url').textContent = data.url;
     document.getElementById('d-code').textContent = code;
+    document.getElementById('d-qr-large-code').textContent = code;
     show('screen-waiting');
   });
 }
