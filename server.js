@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -231,6 +232,53 @@ io.on('connection', socket => {
     const next = g.currentQ + 1;
     if (next >= g.quiz.questions.length) endGame(g);
     else sendQuestion(g, next);
+  });
+
+  // ── DISPLAY : pause ────────────────────────────────────────
+  socket.on('display:pause', ({ code }) => {
+    const g = games[code];
+    if (!g || g.state !== 'question' || g.paused) return;
+    g.paused = true;
+    const elapsed = (Date.now() - g.qStartTime) / 1000;
+    const q = g.quiz.questions[g.currentQ];
+    g.pausedRemaining = Math.max(0, (q.timeLimit || 30) - elapsed);
+    if (g.qTimer) { clearTimeout(g.qTimer); g.qTimer = null; }
+    io.to(`g:${code}`).emit('game:paused', { remaining: Math.ceil(g.pausedRemaining) });
+    io.to(`display:${code}`).emit('game:paused', { remaining: Math.ceil(g.pausedRemaining) });
+  });
+
+  // ── DISPLAY : reprendre ────────────────────────────────────
+  socket.on('display:resume', ({ code }) => {
+    const g = games[code];
+    if (!g || !g.paused) return;
+    g.paused = false;
+    g.qStartTime = Date.now() - ((g.quiz.questions[g.currentQ].timeLimit || 30) - g.pausedRemaining) * 1000;
+    io.to(`g:${code}`).emit('game:resumed', { remaining: Math.ceil(g.pausedRemaining) });
+    io.to(`display:${code}`).emit('game:resumed', { remaining: Math.ceil(g.pausedRemaining) });
+    g.qTimer = setTimeout(() => {
+      if (games[g.code]?.state === 'question') showResults(games[g.code]);
+    }, g.pausedRemaining * 1000);
+  });
+
+  // ── DISPLAY : terminer la partie ──────────────────────────
+  socket.on('display:end-game', ({ code }) => {
+    const g = games[code];
+    if (!g) return;
+    endGame(g);
+  });
+
+  // ── DISPLAY : valider une réponse ouverte ─────────────────
+  socket.on('display:validate-open', ({ code, playerId, points }) => {
+    const g = games[code];
+    if (!g) return;
+    if (g.players[playerId]) {
+      g.players[playerId].score += points;
+      io.to(playerId).emit('answer:ok', { correct: points > 0, points });
+    }
+    // Notifier display et admin du progrès
+    const progress = { answered: Object.keys(g.answers).length, total: Object.keys(g.players).length };
+    io.to(g.adminSocketId).emit('answers:progress', progress);
+    io.to(`display:${code}`).emit('answers:progress', progress);
   });
 
   // ── DISPLAY : rejoindre en spectateur ─────────────────────

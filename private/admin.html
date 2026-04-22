@@ -275,6 +275,27 @@
 
 </div><!-- /game-controls -->
 
+<!-- PANEL : PARTIE EN COURS (remplace les panels pendant la partie) -->
+<div id="panel-inprogress" style="display:none;">
+  <div class="card" style="text-align:center;padding:40px 24px;">
+    <div style="font-size:3rem;margin-bottom:16px;">📺</div>
+    <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:8px;">Partie en cours</h2>
+    <p style="color:var(--muted);margin-bottom:24px;font-size:.95rem;">Tous les contrôles sont sur l'écran de projection.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="openDisplay()">📺 Ouvrir le display</button>
+      <button class="btn btn-red" onclick="endGameAdmin()">🛑 Terminer la partie</button>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-title" style="margin-bottom:10px;">📊 Infos en direct</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+      <span class="stat-pill" id="inprogress-counter">Question ?/?</span>
+      <span class="stat-pill" id="inprogress-answers">0 réponses</span>
+      <span class="stat-pill" id="inprogress-players">0 joueur(s)</span>
+    </div>
+  </div>
+</div>
+
 <div id="display-pane">
   <div id="display-pane-header">
     <span>📺 Affichage projecteur</span>
@@ -784,7 +805,11 @@ socket.on('question:start', data => {
   Audio.startMusic();
   gamePaused = false;
   document.getElementById('btn-pause').textContent = '⏸ Pause';
-  showPanel('question');
+  // Passer en mode "en cours" côté admin
+  showPanel('inprogress');
+  document.getElementById('inprogress-counter').textContent = `Question ${data.index + 1}/${data.total}`;
+  document.getElementById('inprogress-answers').textContent = '0 réponses';
+  // Mettre à jour le display-pane interne (mini-preview)
   document.getElementById('q-counter').textContent = `Question ${data.index + 1}/${data.total}`;
   document.getElementById('q-text').textContent = data.text;
   document.getElementById('q-answers-progress').textContent = `0/? réponses`;
@@ -869,6 +894,8 @@ function validateOpen(playerId, pts, btn) {
 
 socket.on('answers:progress', ({ answered, total }) => {
   document.getElementById('q-answers-progress').textContent = `${answered}/${total} réponses`;
+  const el = document.getElementById('inprogress-answers');
+  if (el) el.textContent = `${answered}/${total} réponses`;
 });
 
 function stopQuestion() { socket.emit('admin:stop-q', { code: currentGameCode }); }
@@ -912,7 +939,9 @@ socket.on('game:resumed', ({ remaining }) => {
 
 socket.on('question:results', data => {
   if (timerInterval) clearInterval(timerInterval);
-  showPanel('results');
+  // Rester sur l'écran "en cours" mais mettre à jour les infos
+  showPanel('inprogress');
+  document.getElementById('inprogress-counter').textContent = 'Résultats en cours…';
   const q = window._qData;
   const colors = ['var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)','var(--c6)'];
   const correctIndexes = data.correctIndexes || [];
@@ -1026,8 +1055,18 @@ function resetGame() { currentGameCode = null; gamePaused = false; closeDisplay(
 socket.on('error', msg => toast(msg, 'err'));
 
 function showPanel(name) {
-  ['setup','waiting','question','results','end'].forEach(p => document.getElementById(`panel-${p}`).style.display = 'none');
-  document.getElementById(`panel-${name}`).style.display = 'block';
+  ['setup','waiting','question','results','end','inprogress'].forEach(p => {
+    const el = document.getElementById(`panel-${p}`);
+    if (el) el.style.display = 'none';
+  });
+  const target = document.getElementById(`panel-${name}`);
+  if (target) target.style.display = 'block';
+  // Mettre à jour le compteur de joueurs dans inprogress
+  if (name === 'inprogress') {
+    const pc = document.getElementById('player-count');
+    const ip = document.getElementById('inprogress-players');
+    if (pc && ip) ip.textContent = pc.textContent;
+  }
 }
 
 function esc(str) {
