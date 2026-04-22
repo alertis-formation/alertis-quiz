@@ -209,6 +209,7 @@ body {
     <button class="cbtn cbtn-orange" onclick="startGame()" id="d-start-btn">▶ Démarrer la partie</button>
     <div class="ctrl-sep"></div>
     <span class="ctrl-progress" id="d-wait-count">0 joueur(s)</span>
+    <button class="cbtn cbtn-red" style="opacity:.8;" onclick="cancelGame()">❌ Annuler la partie</button>
   </div>
 </div>
 
@@ -286,6 +287,12 @@ function togglePause() {
 function endGame() {
   if (!confirm('Terminer la partie ?')) return;
   socket.emit('display:end-game', { code });
+}
+
+function cancelGame() {
+  if (!confirm('Annuler la partie ? Tous les joueurs seront déconnectés.')) return;
+  socket.emit('display:end-game', { code });
+  window.location.href = '/admin';
 }
 
 function validateOpen(playerId, pts, btn) {
@@ -504,7 +511,7 @@ function nextQuestion() { socket.emit('display:next',   { code }); }
 socket.on('display:end', ({ leaderboard }) => {
   document.getElementById('d-end-lb').innerHTML = leaderboard.slice(0, 8).map((p, i) => {
     return `<li class="lb-row-d" style="animation-delay:${i * 0.07}s">
-      <span class="lb-rank-d">${['🥇','🥈','🥉'][p.rank-1] || '#'+p.rank}</span>
+      <span class="lb-rank-d">${['\ud83e\udd47','\ud83e\udd48','\ud83e\udd49'][p.rank-1] || '#'+p.rank}</span>
       <span class="lb-name-d">${esc(p.name)}</span>
       <span class="lb-score-d">${p.score.toLocaleString('fr-FR')} pts</span>
     </li>`;
@@ -513,6 +520,24 @@ socket.on('display:end', ({ leaderboard }) => {
   setTimeout(() => {
     confetti({ particleCount: 180, spread: 120, origin: { y: 0.5 }, colors: ['#F97316','#6AA5E8','#10b981','#f59e0b','#8b5cf6'] });
   }, 300);
+  // Bouton retour admin + redirection auto après 15s
+  const endScreen = document.getElementById('screen-end');
+  const backBtn = document.createElement('button');
+  backBtn.className = 'cbtn cbtn-orange';
+  backBtn.style.cssText = 'margin-top:24px;font-size:1.1rem;padding:14px 32px;';
+  backBtn.textContent = '\u21a9 Retour à l\'admin';
+  backBtn.onclick = () => window.location.href = '/admin';
+  endScreen.appendChild(backBtn);
+  const countdown = document.createElement('div');
+  countdown.style.cssText = 'margin-top:12px;color:rgba(255,255,255,.4);font-size:.85rem;';
+  endScreen.appendChild(countdown);
+  let secs = 15;
+  const tick = setInterval(() => {
+    secs--;
+    countdown.textContent = `Retour automatique dans ${secs}s…`;
+    if (secs <= 0) { clearInterval(tick); window.location.href = '/admin'; }
+  }, 1000);
+  countdown.textContent = `Retour automatique dans ${secs}s…`;
 });
 </script>
 </body>

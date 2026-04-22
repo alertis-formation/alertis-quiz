@@ -769,18 +769,8 @@ function createGame() {
 }
 
 socket.on('admin:created', async ({ code }) => {
-  currentGameCode = code;
-  document.getElementById('game-code-display').textContent = code;
-  document.getElementById('d-code').textContent = code;
-  showPanel('waiting');
-  showDscreen('waiting');
-  openDisplay();
-  const res = await fetch(`/api/qr/${code}`);
-  const data = await res.json();
-  document.getElementById('qr-img').src = data.qr;
-  document.getElementById('join-url').textContent = data.url;
-  document.getElementById('d-qr').src = data.qr;
-  window._joinUrl = data.url;
+  // Rediriger vers display.html dans le même onglet
+  window.location.href = `/display?code=${code}`;
 });
 
 function copyJoinUrl() {
