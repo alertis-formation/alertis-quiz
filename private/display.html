@@ -87,9 +87,15 @@ body {
 .choice-display-btn:nth-child(4) { background: linear-gradient(145deg,#f59e0b,#b45309); animation-delay:.26s; }
 .choice-display-btn:nth-child(5) { background: linear-gradient(145deg,#8b5cf6,#6d28d9); animation-delay:.33s; }
 .choice-display-btn:nth-child(6) { background: linear-gradient(145deg,#06b6d4,#0e7490); animation-delay:.40s; }
-.choice-shape { font-size: 2rem; }
-.choice-img-d { max-height: 56px; border-radius: 8px; object-fit: cover; }
-.choice-text-d { flex: 1; }
+.choice-shape { font-size: 1.6rem; }
+.choice-img-d { max-height: 40px; border-radius: 8px; object-fit: cover; }
+.choice-text-d { flex: 1; font-size: 1.1rem; }
+@media (max-height: 700px) {
+  .choice-display-btn { padding: 12px 20px; min-height: 70px; font-size: 1.1rem; }
+  .q-text-display { font-size: 1.8rem; padding: 15px 25px; }
+  .q-image-display { max-height: 150px; }
+}
+
 
 /* ── RESULTS ─────────────────────────────────────── */
 #screen-results { gap: 28px; }
@@ -243,10 +249,10 @@ body {
     </div>
   </div>
   <div class="ctrl-bar">
-    <button class="cbtn cbtn-orange" onclick="startGame()" id="d-start-btn">▶ Démarrer la partie</button>
+    <button class="cbtn cbtn-red" style="opacity:.8;" onclick="cancelGame()">❌ Annuler la partie</button>
     <div class="ctrl-sep"></div>
     <span class="ctrl-progress" id="d-wait-count">0 joueur(s)</span>
-    <button class="cbtn cbtn-red" style="opacity:.8;" onclick="cancelGame()">❌ Annuler la partie</button>
+    <button class="cbtn cbtn-orange" onclick="startGame()" id="d-start-btn">▶ Démarrer la partie</button>
   </div>
 </div>
 
@@ -274,11 +280,11 @@ body {
     <div class="open-answers-d" id="d-open-list"></div>
   </div>
   <div class="ctrl-bar">
-    <button class="cbtn cbtn-red" onclick="stopQuestion()">⏹ Terminer</button>
-    <button class="cbtn cbtn-ghost" id="d-btn-pause" onclick="togglePause()">⏸ Pause</button>
+    <button class="cbtn cbtn-red" style="opacity:.7;font-size:.85rem;" onclick="endGame()">🛑 Terminer la partie</button>
     <div class="ctrl-sep"></div>
     <span class="ctrl-progress" id="d-answers-progress">0/0 réponses</span>
-    <button class="cbtn cbtn-red" style="opacity:.7;font-size:.85rem;" onclick="endGame()">🛑 Terminer la partie</button>
+    <button class="cbtn cbtn-ghost" id="d-btn-pause" onclick="togglePause()">⏸ Pause</button>
+    <button class="cbtn cbtn-red" onclick="stopQuestion()">⏹ Terminer</button>
   </div>
 </div>
 
@@ -289,9 +295,9 @@ body {
   <div class="explanation-d" id="d-explanation" style="display:none;"></div>
   <div class="top3-d" id="d-top3"></div>
   <div class="ctrl-bar">
-    <button class="cbtn cbtn-orange" id="d-next-btn" onclick="nextQuestion()">Suivant ▶</button>
-    <div class="ctrl-sep"></div>
     <button class="cbtn cbtn-red" style="opacity:.75;font-size:.85rem;" onclick="endGame()">🛑 Terminer la partie</button>
+    <div class="ctrl-sep"></div>
+    <button class="cbtn cbtn-orange" id="d-next-btn" onclick="nextQuestion()">Suivant ▶</button>
   </div>
 </div>
 
